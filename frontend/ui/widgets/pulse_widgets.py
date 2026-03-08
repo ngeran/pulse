@@ -168,7 +168,7 @@ class MetricBar(Static):
     }
 
     .metric-bar-bg {
-        color: $text-muted-dim;
+        color: #666666;
     }
     """
 
@@ -300,16 +300,6 @@ class StatusBadge(Static):
 
     .badge-muted {
         color: $text-muted;
-    }
-
-    .badge-blink {
-        animation: blink 1s infinite;
-    }
-
-    @keyframes blink {
-        0% { text-style: bold; }
-        50% { text-style: bold reverse; }
-        100% { text-style: bold; }
     }
 
     .trend-improving {

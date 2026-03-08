@@ -9,6 +9,7 @@ from backend.core.events import ConnectionEvent, HealthEvent, EventMessage
 from backend.config.loader import load_config
 from backend.utils.logging import setup_logging, logger
 from frontend.ui.screens.connection import ConnectionScreen
+from frontend.ui.screens.health_dashboard import HealthDashboardScreen
 from backend.api.server import run_server, start_event_broadcaster
 import asyncio
 import threading
@@ -32,19 +33,18 @@ class BackendStatus(Label):
         self.add_class("status-disconnected")
 
 class SPOFAlertPanel(Static):
-    """Critical alerts panel at the top of UI"""
-    
+    """Critical alerts panel at the top of UI - Single Point of Failure detection"""
+
     def on_mount(self):
         self.update("NO SPOF DETECTED")
-        self.styles.background = "green"
-        self.styles.color = "white"
 
 class PulseApp(App):
-    CSS_PATH = "styles/dark.tcss"
-    
+    CSS_PATH = "../styles/dark.tcss"
+
     BINDINGS = [
         ("c", "push_connection", "Connect"),
         ("d", "disconnect_selected", "Disconnect"),
+        ("h", "push_health_dashboard", "Health Dashboard"),
         ("q", "quit", "Quit")
     ]
 
@@ -74,6 +74,7 @@ class PulseApp(App):
         """Initialize the application when mounted."""
         logger.info("app_mounting", app_name="PulseApp")
         self.install_screen(ConnectionScreen(), name="connection")
+        self.install_screen(HealthDashboardScreen(), name="health_dashboard")
         # Enable console logging for visibility
         setup_logging(console_output=True)
         logger.info("app_logging_initialized", console_enabled=True)
@@ -91,7 +92,7 @@ class PulseApp(App):
         self.log_backend_event("[INFO] Starting backend server on port 8001...")
         asyncio.create_task(self.start_backend())
         logger.info("app_mounted_successfully")
-        self.log_backend_event("[INFO] App initialization complete. Press 'c' to connect a device.")
+        self.log_backend_event("[INFO] App initialization complete. Press 'c' to connect a device, 'h' for health dashboard.")
 
     async def start_backend(self):
         """Starts the FastAPI/WebSocket server in a background task."""
@@ -349,11 +350,15 @@ class PulseApp(App):
             log = self.query_one("#event-log", EventLog)
             log.write_line("[ERROR] Cannot disconnect: Backend WS is not connected.")
             return
-            
+
         tree = self.query_one("#device-tree", DeviceTree)
         if tree.cursor_node and tree.cursor_node.data:
             host = tree.cursor_node.data
             asyncio.create_task(self.conn_mgr.disconnect_device(host))
+
+    def action_push_health_dashboard(self) -> None:
+        """Action to push the health dashboard screen."""
+        self.push_screen("health_dashboard")
 
 if __name__ == "__main__":
     app = PulseApp()

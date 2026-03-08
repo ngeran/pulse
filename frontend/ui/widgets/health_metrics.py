@@ -153,7 +153,7 @@ class OpticalMetricsTable(CompactTable):
     - Alarm status
     """
 
-    COLUMNS = ["Interface", "TX (dBm)", "RX (dBm)", "Temp (°C)", "Bias (mA)", "Status"]
+    COLUMNS = ["Interface            ", "TX (dBm)", "RX (dBm)", "Temp (°C)", "Bias (mA)", "Status"]
 
     def __init__(self, **kwargs) -> None:
         super().__init__(
@@ -167,11 +167,17 @@ class OpticalMetricsTable(CompactTable):
         Update table with optical diagnostics data.
 
         Args:
-            diagnostics: Dict mapping interface names to diagnostic data
+            diagnostics: Dict mapping device:interface names to diagnostic data
         """
         rows = []
 
-        for interface, data in diagnostics.items():
+        for key, data in diagnostics.items():
+            # Extract just the interface name (remove device prefix)
+            if ":" in key:
+                interface = key.split(":")[1]
+            else:
+                interface = key
+
             tx_power = data.get("laser_output_power", 0)
             rx_power = data.get("rx_signal_power", 0)
             temp = data.get("module_temperature", 0)
@@ -185,20 +191,63 @@ class OpticalMetricsTable(CompactTable):
             temp_high_alarm = data.get("temp_high_alarm")
             temp_high_warn = data.get("temp_high_warning")
 
-            status = "✓"
+            # Determine severity and color
+            severity = "ok"  # Default to ok/green
             if rx_low_alarm and rx_power <= rx_low_alarm:
-                status = "⚠"
+                severity = "critical"
             elif tx_low_alarm and tx_power <= tx_low_alarm:
-                status = "⚠"
+                severity = "critical"
             elif temp_high_alarm and temp >= temp_high_alarm:
-                status = "⚠"
+                severity = "critical"
+            elif rx_low_warn and rx_power <= rx_low_warn:
+                severity = "warning"
+            elif tx_low_warn and tx_power <= tx_low_warn:
+                severity = "warning"
+            elif temp_high_warn and temp >= temp_high_warn:
+                severity = "warning"
+
+            # Status icon with color
+            if severity == "critical":
+                status = "[#ff0000 bold]⚠[/#ff0000 bold]"
+            elif severity == "warning":
+                status = "[#ffff00 bold]⚡[/#ffff00 bold]"
+            else:
+                status = "[#00ff00 bold]✓[/#00ff00 bold]"
+
+            # Format values with colors
+            # Color RX power based on level
+            if rx_power < -15:
+                rx_str = f"[#ff0000]{rx_power:>7.2f}[/#ff0000]"
+            elif rx_power < -12:
+                rx_str = f"[#ffff00]{rx_power:>7.2f}[/#ffff00]"
+            else:
+                rx_str = f"[#00ff00]{rx_power:>7.2f}[/#00ff00]"
+
+            # Color TX power based on level
+            if tx_power < -5:
+                tx_str = f"[#ff0000]{tx_power:>8.2f}[/#ff0000]"
+            elif tx_power < -3:
+                tx_str = f"[#ffff00]{tx_power:>8.2f}[/#ffff00]"
+            else:
+                tx_str = f"[#00ff00]{tx_power:>8.2f}[/#00ff00]"
+
+            # Color temperature based on level
+            if temp > 70:
+                temp_str = f"[#ff0000]{temp:>8.1f}[/#ff0000]"
+            elif temp > 60:
+                temp_str = f"[#ffff00]{temp:>8.1f}[/#ffff00]"
+            else:
+                temp_str = f"[#888888]{temp:>8.1f}[/#888888]"
+
+            # Bias current (neutral gray)
+            bias_str = f"[#888888]{bias:>9.1f}[/#888888]"
 
             row = [
-                interface,
-                f"{tx_power:.2f}",
-                f"{rx_power:.2f}",
-                f"{temp:.1f}",
-                f"{bias:.1f}",
+                f"[#ff8800 bold]{interface:<20}[/#ff8800 bold]",
+                tx_str,
+                rx_str,
+                temp_str,
+                bias_str,
                 status
             ]
             rows.append(row)

@@ -71,6 +71,102 @@ class DeviceSession:
         except Exception:
             return False
 
+    async def rpc(self, command: str) -> Optional[Dict]:
+        """
+        Execute an RPC command and return JSON response.
+
+        Args:
+            command: RPC command string (e.g., "show interfaces diagnostics optics ge-0/0/0 | display json")
+
+        Returns:
+            Parsed JSON response as dict, or None if command fails
+        """
+        if not self.dev.connected:
+            logger.warning("rpc_not_connected", device=self.host, command=command)
+            return None
+
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, lambda: self.dev.rpc(command))
+            if result:
+                # Convert PyEZ RPC response to dict
+                return self._rpc_to_dict(result)
+            return None
+        except Exception as e:
+            logger.error("rpc_failed", device=self.host, command=command, error=str(e))
+            return None
+
+    async def cli(self, command: str) -> Optional[Dict]:
+        """
+        Execute a CLI command and return JSON response.
+
+        Use this for commands with '| display json' suffix.
+
+        Args:
+            command: CLI command string (e.g., "show interfaces diagnostics optics ge-0/0/0 | display json")
+
+        Returns:
+            Parsed JSON response as dict, or None if command fails
+        """
+        if not self.dev.connected:
+            logger.warning("cli_not_connected", device=self.host, command=command)
+            return None
+
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, lambda: self.dev.cli(command, format='json'))
+            if result:
+                # PyEZ cli() with format='json' already returns a dict
+                if isinstance(result, dict):
+                    return result
+                else:
+                    logger.warning("cli_unexpected_result_type", device=self.host, command=command, result_type=str(type(result)))
+                    return None
+            return None
+        except Exception as e:
+            logger.error("cli_failed", device=self.host, command=command, error=str(e))
+            return None
+
+    def _rpc_to_dict(self, rpc_result) -> Dict:
+        """
+        Convert PyEZ RPC result to dictionary.
+
+        Args:
+            rpc_result: PyEZ RPC response object
+
+        Returns:
+            Dictionary representation of the RPC response
+        """
+        if hasattr(rpc_result, 'todict'):
+            return rpc_result.todict()
+        elif hasattr(rpc_result, 'getfield'):
+            # Handle lxml _Element objects
+            from lxml import etree
+            if isinstance(rpc_result, etree._Element):
+                # Try to convert element to dict
+                try:
+                    # For XML elements, convert to string then parse
+                    xml_str = etree.tostring(rpc_result, encoding='unicode')
+                    import xmltodict
+                    return xmltodict.parse(xml_str)
+                except Exception as e:
+                    logger.error("rpc_xml_parse_failed", error=str(e))
+                    # Return raw XML as fallback
+                    return {"_raw_xml": xml_str}
+        elif isinstance(rpc_result, str):
+            # Already a string, try to parse as JSON
+            try:
+                import json
+                return json.loads(rpc_result)
+            except Exception:
+                return {"_raw_string": rpc_result}
+        elif rpc_result is None:
+            return {}
+
+        logger.warning("rpc_unknown_result_type", result_type=str(type(rpc_result)))
+        return {}
+
+
 class ConnectionManager:
     def __init__(self, max_sessions: int = 10, retry_limit: int = 3):
         self.max_sessions = max_sessions

@@ -10,32 +10,76 @@ class ConnectionScreen(ModalScreen):
     DEFAULT_CSS = """
     ConnectionScreen {
         align: center middle;
+        background: #000000aa;
     }
 
     #connection-panel {
         width: 60;
         height: auto;
-        border: thick $primary;
-        background: $surface;
+        border: solid #3a3a3a;
+        background: #000000;
         padding: 1 2;
     }
 
+    #title {
+        color: #00d7ff;
+        text-style: bold;
+        text-align: center;
+        margin-top: 0;
+    }
+
     Label {
+        color: #ffffff;
         margin-top: 1;
     }
 
     Input {
         margin-bottom: 1;
+        border: solid #3a3a3a;
+        background: #000000;
+        color: #ffffff;
+    }
+
+    Input:focus {
+        border: solid #00d7ff;
     }
 
     #button-row {
         margin-top: 1;
-        align: right middle;
+        align: center middle;
         height: auto;
     }
 
     Button {
-        margin-left: 1;
+        margin: 0 1;
+        background: #1a1a1a;
+        border: solid #3a3a3a;
+        color: #ffffff;
+    }
+
+    Button:hover {
+        background: #2a2a2a;
+        border: solid #00d7ff;
+    }
+
+    Button.-success {
+        background: #003300;
+        border: solid #00ff00;
+        color: #00ff00;
+    }
+
+    Button.-success:hover {
+        background: #004400;
+    }
+
+    Button.-error {
+        background: #330000;
+        border: solid #ff0000;
+        color: #ff0000;
+    }
+
+    Button.-error:hover {
+        background: #440000;
     }
     """
 

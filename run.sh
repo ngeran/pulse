@@ -39,6 +39,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "💡 TIP: Press 'q' to quit the application"
 echo "💡 TIP: Press 'c' to connect a device"
+echo "💡 TIP: Press 'h' to open the Health Dashboard"
 echo "💡 TIP: Press 'ctrl+p' to open the command palette"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
