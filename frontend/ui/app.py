@@ -10,6 +10,7 @@ from backend.config.loader import load_config
 from backend.utils.logging import setup_logging, logger
 from frontend.ui.screens.connection import ConnectionScreen
 from frontend.ui.screens.health_dashboard import HealthDashboardScreen
+from frontend.ui.widgets.pulse_header import PulseHeader
 from backend.api.server import run_server, start_event_broadcaster
 import asyncio
 import threading
@@ -60,8 +61,7 @@ class PulseApp(App):
         self.ws_connected = False
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
-        yield BackendStatus(id="ws-status")
+        yield PulseHeader(id="pulse-header")
         yield SPOFAlertPanel(id="spof-alert")
         with Horizontal():
             yield DeviceTree("Devices", id="device-tree")

@@ -11,9 +11,10 @@ from pathlib import Path
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Header, Footer, Static, Button
+from textual.widgets import Footer, Static, Button
 
 from frontend.ui.widgets.pulse_widgets import PulsePanel, MetricBar, StatusBadge, CompactTable, CompactLog
+from frontend.ui.widgets.pulse_header import PulseHeader
 from backend.utils.logging import logger
 from frontend.ui.widgets.health_metrics import (
     HealthMetricBar,
@@ -40,20 +41,26 @@ class HealthDashboardScreen(Screen):
 
     def compose(self) -> ComposeResult:
         """Compose the dashboard grid."""
-        yield Header(show_clock=True)
+        yield PulseHeader(id="pulse-header")
         yield Footer()
 
         # Top bar with title and fetch button
         with Horizontal(id="top-bar"):
             yield Static("Circuit Health", id="dashboard-title")
-            yield Button("Fetch Data", id="fetch-button")
+            yield Button("FETCH", id="fetch-button")
 
         # Main grid container
         with Vertical(id="dashboard-grid"):
             # Row 1
             with Horizontal():
-                yield HealthScoresPanel(id="health-scores")
-                yield OpticalDiagnosticsPanel(id="optics-table")
+                # Left column: Health Scores (top) and Network Summary (bottom)
+                with Vertical():
+                    yield HealthScoresPanel(id="health-scores")
+                    yield NetworkSummaryPanel(id="network-summary")
+                # Right column: Optical Diagnostics split horizontally
+                with Vertical():
+                    yield OpticalDiagnosticsPanel(id="optics-table")
+                    yield OpticalStatsPanel(id="optics-stats")
 
             # Row 2
             with Horizontal():
@@ -83,7 +90,7 @@ class HealthDashboardScreen(Screen):
             if not hasattr(app, 'conn_mgr'):
                 alert_panel.add_alert("❌ No connection manager found", "error")
                 button.disabled = False
-                button.label = "Fetch Data"
+                button.label = "FETCH"
                 return
 
             conn_mgr = app.conn_mgr
@@ -108,12 +115,12 @@ class HealthDashboardScreen(Screen):
                 alert_panel.add_alert("  2. Press 'c' to open the connection form", "info")
                 alert_panel.add_alert("  3. Enter device credentials and connect", "info")
                 alert_panel.add_alert("  4. Press 'h' to return to this dashboard", "info")
-                alert_panel.add_alert("  5. Press 'Fetch Data' again", "info")
+                alert_panel.add_alert("  5. Press 'FETCH' again", "info")
                 alert_panel.add_alert("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "info")
                 alert_panel.add_alert("", "info")
 
                 button.disabled = False
-                button.label = "Fetch Data"
+                button.label = "FETCH"
                 return
 
             alert_panel.add_alert("", "info")
@@ -319,6 +326,10 @@ class HealthDashboardScreen(Screen):
             alert_panel.add_alert("📊 Updating dashboard panels...", "info")
 
             if all_data:
+                # Update network summary
+                summary_panel = self.query_one("#network-summary", NetworkSummaryPanel)
+                summary_panel.update_summary(all_data)
+
                 scores_panel = self.query_one("#health-scores", HealthScoresPanel)
                 scores_panel.update_scores(all_data)
 
@@ -356,6 +367,10 @@ class HealthDashboardScreen(Screen):
             alert_panel.add_alert("", "info")
             alert_panel.add_alert("✓ Fetch complete!", "success")
 
+            # Update header status after successful fetch
+            header = self.app.query_one("#pulse-header", PulseHeader)
+            header.update_status()
+
         except Exception as e:
             alert_panel.add_alert(f"❌ Fetch error: {str(e)}", "error")
             import traceback
@@ -363,7 +378,7 @@ class HealthDashboardScreen(Screen):
 
         finally:
             button.disabled = False
-            button.label = "Fetch Data"
+            button.label = "FETCH"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -377,9 +392,9 @@ class HealthPanel(Vertical):
     """
 
     def __init__(self, title: str, **kwargs):
-        # Use Vertical container which supports border_title
-        super().__init__(border_title=title, **kwargs)
-        self._panel_title = title
+        # Set border_title attribute after construction
+        super().__init__(**kwargs)
+        self.border_title = title
 
     def compose(self) -> ComposeResult:
         yield from self._compose_content()
@@ -389,17 +404,76 @@ class HealthPanel(Vertical):
         yield Container(id="content", classes="PanelContent")
 
 
+class NetworkSummaryPanel(HealthPanel):
+    """Panel 1: Network-wide summary statistics."""
+
+    def __init__(self, **kwargs):
+        super().__init__(title="Network Summary", **kwargs)
+
+    def _compose_content(self) -> ComposeResult:
+        """Compose network summary content."""
+        with Vertical(id="content", classes="PanelContent"):
+            yield Static("No data. Press 'FETCH' to load.", id="summary-placeholder")
+
+    def update_summary(self, all_data: dict) -> None:
+        """Update network summary with fetched data."""
+        content = self.query_one("#content", Vertical)
+        content.remove_children()
+
+        # Calculate overall statistics
+        total_devices = len(all_data)
+        total_interfaces = sum(len(interfaces) for interfaces in all_data.values())
+
+        # Count interfaces by status
+        up_count = 0
+        down_count = 0
+        total_score = 0
+        critical_count = 0
+
+        for device, interfaces in all_data.items():
+            for iface in interfaces:
+                score = iface.get("score", 0)
+                total_score += score
+
+                if score == 0:
+                    down_count += 1
+                    critical_count += 1
+                else:
+                    up_count += 1
+
+        avg_score = total_score / (total_interfaces) if total_interfaces > 0 else 0
+
+        # Overall health
+        overall_color = "#00ff00" if avg_score >= 80 else "#ffff00" if avg_score >= 50 else "#ff0000"
+        overall_status = "HEALTHY" if avg_score >= 80 else "DEGRADED" if avg_score >= 50 else "CRITICAL"
+
+        # Build summary text
+        summary = f"""[{overall_color} bold]Network Overview[/]
+
+[dim]Devices:[/] {total_devices}
+[dim]Interfaces:[/] {total_interfaces}
+[dim]Up:[/] [#00ff00]{up_count}[/]
+[dim]Down:[/] [#ff0000]{down_count}[/]
+
+[{overall_color} bold]Health Status[/]
+[{overall_color}]{overall_status}[/]
+[dim]Avg Score:[/] [{overall_color} bold]{avg_score:.0f}/100[/]
+
+[dim]Critical:[/] [#ff0000]{critical_count}[/]"""
+        content.mount(Static(summary))
+
+
 class HealthScoresPanel(HealthPanel):
     """Panel 1: Health scores grouped by device."""
 
     def __init__(self, **kwargs):
-        super().__init__(title="📊 Health Scores", **kwargs)
+        super().__init__(title="Health Scores", **kwargs)
 
     def _compose_content(self) -> ComposeResult:
         """Compose health scores content."""
         with Vertical(id="content", classes="PanelContent"):
             # Device groups will be dynamically added
-            yield Static("No data. Press 'Fetch Data' to load.", id="scores-placeholder")
+            yield Static("No data. Press 'FETCH' to load.", id="scores-placeholder")
 
     def update_scores(self, device_scores: dict):
         """
@@ -471,7 +545,7 @@ class HealthScoresPanel(HealthPanel):
             device_status = "●" if device_avg >= 80 else "◐" if device_avg >= 50 else "○"
 
             # Device group header with stats
-            header_text = f"[{device_color} bold]{device_status} {device}[/] [|#888888 dim]({len(interfaces)} circuits, avg: {device_avg:.0f})[/]"
+            header_text = f"[{device_color} bold]{device_status} {device}[/] [#888888]({len(interfaces)} circuits, avg: {device_avg:.0f})[/]"
             content.mount(Static(header_text, classes="DeviceGroup"))
 
             # Interface rows
@@ -524,7 +598,7 @@ class OpticalDiagnosticsPanel(HealthPanel):
     """Panel 2: Optical diagnostics table."""
 
     def __init__(self, **kwargs):
-        super().__init__(title="💡 Optical Diagnostics", **kwargs)
+        super().__init__(title="Optical Diagnostics", **kwargs)
 
     def _compose_content(self) -> ComposeResult:
         with Vertical(id="content", classes="PanelContent"):
@@ -555,11 +629,98 @@ class OpticalDiagnosticsPanel(HealthPanel):
             logger.error("optics_panel_update_failed", error=str(e))
 
 
+class OpticalStatsPanel(HealthPanel):
+    """Panel: Optical statistics and summary."""
+
+    def __init__(self, **kwargs):
+        super().__init__(title="Optical Statistics", **kwargs)
+
+    def _compose_content(self) -> ComposeResult:
+        """Compose optical statistics content."""
+        with Vertical(id="content", classes="PanelContent"):
+            yield Static("No data. Press 'FETCH' to load.", id="stats-placeholder")
+
+    def update_stats(self, all_data: dict) -> None:
+        """Update optical statistics with fetched data."""
+        content = self.query_one("#content", Vertical)
+        content.remove_children()
+
+        # Calculate statistics
+        interfaces_count = sum(len(interfaces) for interfaces in all_data.values())
+        healthy_count = 0
+        warning_count = 0
+        critical_count = 0
+
+        total_tx = 0
+        total_rx = 0
+        total_temp = 0
+        valid_interfaces = 0
+
+        for device, interfaces in all_data.items():
+            for iface in interfaces:
+                tx = iface.get("tx_power", -99.9)
+                rx = iface.get("rx_power", -99.9)
+                temp = iface.get("temperature", 0)
+
+                if rx < -15 or rx > 0:
+                    critical_count += 1
+                elif rx < -12:
+                    warning_count += 1
+                else:
+                    healthy_count += 1
+
+                if tx > -50:  # Valid TX power
+                    total_tx += tx
+                    valid_interfaces += 1
+                if rx > -50:  # Valid RX power
+                    total_rx += rx
+                if temp > 0:
+                    total_temp += temp
+                    valid_interfaces += 1
+
+        # Calculate averages
+        avg_tx = total_tx / valid_interfaces if valid_interfaces > 0 else 0
+        avg_rx = total_rx / valid_interfaces if valid_interfaces > 0 else 0
+        avg_temp = total_temp / valid_interfaces if valid_interfaces > 0 else 0
+
+        # Build stats display
+        stats = f"""[bold #ff8800]Optical Overview[/]
+
+[dim]Total Interfaces:[/] {interfaces_count}
+[dim]Healthy:[/] [#00ff00]{healthy_count}[/]
+[dim]Warning:[/] [#ffff00]{warning_count}[/]
+[dim]Critical:[/] [#ff0000]{critical_count}[/]
+
+[bold white]Averages[/]
+[dim]TX Power:[/] [{self._get_power_color(avg_tx)}]{avg_tx:.2f} dBm[/]
+[dim]RX Power:[/] [{self._get_power_color(avg_rx)}]{avg_rx:.2f} dBm[/]
+[dim]Temperature:[/] [{self._get_temp_color(avg_temp)}]{avg_temp:.1f} °C[/]"""
+        content.mount(Static(stats))
+
+    def _get_power_color(self, power: float) -> str:
+        """Get color for power level."""
+        if power < -15 or power > 0:
+            return "#ff0000"
+        elif power < -12:
+            return "#ffff00"
+        else:
+            return "#00ff00"
+
+    def _get_temp_color(self, temp: float) -> str:
+        """Get color for temperature."""
+        if temp > 70:
+            return "#ff0000"
+        elif temp > 60:
+            return "#ffff00"
+        else:
+            return "#00ff00"
+
+
 class InterfaceDetailsPanel(HealthPanel):
     """Panel 3: Detailed interface information."""
 
     def __init__(self, **kwargs):
-        super().__init__(title="🔍 Interface Details", **kwargs)
+        super().__init__(title="Interface Details", **kwargs)
 
     def _compose_content(self) -> ComposeResult:
         with Vertical(id="content", classes="PanelContent"):
@@ -641,7 +802,7 @@ class AlertHistoryPanel(HealthPanel):
     """Panel 4: Alert history log."""
 
     def __init__(self, **kwargs):
-        super().__init__(title="🚨 Alert History", **kwargs)
+        super().__init__(title="Alert History", **kwargs)
 
     def _compose_content(self) -> ComposeResult:
         from frontend.ui.widgets.pulse_widgets import CompactLog

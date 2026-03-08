@@ -21,22 +21,24 @@ HealthDashboardScreen {
 
 #fetch-button {
     align: right middle;
-    width: auto;
+    width: 14;
     height: 3;
-    min-width: 20;
-    border: solid #3a3a3a;
+    border: solid #ff8800;
     background: #000000;
-    color: #ffffff;
+    color: #ff8800;
+    text-style: bold;
+    content-align: center middle;
 }
 
 #fetch-button:hover {
     border: solid #00d7ff;
     color: #00d7ff;
+    background: #0a0a1a;
 }
 
 #fetch-button:disabled {
-    color: #666666;
     border: solid #3a3a3a;
+    color: #666666;
 }
 
 /* Dashboard grid layout */
@@ -59,11 +61,12 @@ HealthPanel {
 }
 
 /* Border-title styling */
-HealthPanel > VerticalBorderTitle {
+HealthPanel > .border-title {
     background: #000000;
     color: #ff8800;
     text-style: bold;
     padding: 0 1;
+    height: 1;
     border-bottom: solid #3a3a3a;
 }
 
@@ -71,7 +74,7 @@ HealthPanel:focus-within {
     border: solid #00d7ff;
 }
 
-HealthPanel:focus-within > VerticalBorderTitle {
+HealthPanel:focus-within > .border-title {
     background: #00d7ff;
     color: #000000;
 }

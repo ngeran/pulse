@@ -1,9 +1,23 @@
 Screen {
-    background: #0a0a0a;
+    background: #000000;
+}
+
+/* Custom Pulse Header */
+PulseHeader {
+    height: 5;
+    background: #000000;
+    border-bottom: solid #3a3a3a;
+    padding: 0 1;
+}
+
+PulseHeader > Static {
+    background: #000000;
+    color: #ffffff;
+    text-style: bold;
 }
 
 Header {
-    background: #1a1a1a;
+    background: #000000;
     color: #00ff00;
     text-style: bold;
 }
