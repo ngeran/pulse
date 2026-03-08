@@ -1,0 +1,36 @@
+pulse:
+  polling_interval: 60  # seconds
+  connection_timeout: 30
+  retry_attempts: 3
+  cache_ttl: 300
+
+  thresholds:
+    # Optical power thresholds (dBm)
+    optical_power:
+      warn: -12
+      critical: -17
+
+    # Error ratio thresholds
+    error_ratio:
+      warn: 0.0005
+      critical: 0.001
+
+    # Alert management
+    alert_cooldown: 300  # seconds (5 minutes) between alerts for same interface
+
+    # Health scoring weights (must sum to 1.0)
+    health_weights:
+      optical: 0.4      # 40% weight for optical metrics
+      errors: 0.3       # 30% weight for error rates
+      stability: 0.3    # 30% weight for interface stability
+
+    # Trend analysis sensitivity
+    trend_window_size: 5      # Number of samples to analyze
+    trend_sensitivity: 10.0   # Percent change to trigger trend alert
+
+  sites: {}
+
+  ui:
+    refresh_rate: 2  # seconds
+    color_scheme: "dark"  # or "light"
+    log_retention: 1000  # lines

@@ -1,0 +1,137 @@
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+.venv*
+venv*
+.env/
+.python-version
+
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyc
+*.pyo
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.coverage.*
+coverage/
+.pytest_cache*/
+
+# Packaging & distribution
+*.egg-info/
+dist/
+build/
+*.egg
+*.eggs/
+MANIFEST
+
+# Installer & wheel files
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+pip-selfcheck.json
+
+# Logs & databases
+*.log
+*.logs/
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# IDEs & editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+*.code-snippets
+.history/
+.fleet/
+.ionide/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# npm / node (if you also use JS/TS in the project)
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnpm-debug.log
+
+# Keep these if you want (uncomment to ignore)
+/.mypy_cache/
+/.ruff_cache/
+
+# ────────────────────────────────────────────────
+# AI coding assistants & LLM-generated / memory files
+# ────────────────────────────────────────────────
+
+# Claude Code (Anthropic)
+CLAUDE.md
+CLAUDE.local.md
+CLAUDE_MEM.md          # sometimes seen in plugins
+.claude/
+.claudeignore          # proposed / emerging in some discussions
+
+# Cursor.sh
+.cursorrules
+.cursor/
+.cursor/rules/
+.cursorignore
+.cursor.md             # rare, but sometimes used
+
+# Windsurf
+.windsurfrules
+.windsurf/
+.windsurf/rules/
+
+# Other common AI agent memory / rules files
+AGENTS.md
+.copilot-instructions.md
+.github/copilot-instructions.md
+JULES.md               # Google / Jules related
+.claude/rules/         # hierarchical rules dir
+.claude/rules/**/*.md
+
+# Temporary / generated AI files (plugins, auto-memory, experiments)
+**/CLAUDE.md           # catch them anywhere (very common with buggy plugins)
+**/*.ai.md
+**/*.llm.md
+**/*.generated.md
+.ai/
+.llm/
+.agent-memory/
+.auto-memory/
+
+# General "don't commit AI junk" catch-all (optional, can be noisy)
+*AI-README*.md
+*ai-generated*
+*claude-snapshot*

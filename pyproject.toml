@@ -1,0 +1,38 @@
+[project]
+name = "pulse-app"
+version = "0.1.0"
+description = "Terminal-based circuit health monitoring for Juniper networks"
+authors = [
+    {name = "Expert Network Automation Engineer"}
+]
+dependencies = [
+    "junos-eznc>=2.7.0",
+    "textual>=0.86.0",
+    "structlog>=24.4.0",
+    "pyyaml>=6.0.1",
+    "pydantic>=2.9.0",
+    "asyncio>=3.4.3",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "websockets>=13.0",
+]
+
+[tool.poetry]
+name = "pulse-app"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

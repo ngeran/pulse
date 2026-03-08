@@ -1,0 +1,39 @@
+OpticalTable:
+  rpc: get-interface-optics-diagnostics-information
+  item: physical-interface-advisory-details
+  view: OpticalView
+
+OpticalView:
+  fields:
+    name: name
+    rx_power: receiver-receiver-optical-power
+    laser_output_power: laser-output-power/laser-output-power
+    module_temperature: module-temperature/module-temperature
+    laser_bias_current: laser-bias-current/laser-bias-current
+    laser_output_low_alarm: laser-output-power/laser-output-power-low-alarm-threshold
+    laser_output_low_warning: laser-output-power/laser-output-power-low-warning-threshold
+    rx_signal_low_alarm: receiver-receiver-optical-power/rx-optical-power-low-alarm-threshold
+    rx_signal_low_warning: receiver-receiver-optical-power/rx-optical-power-low-warning-threshold
+    temp_high_alarm: module-temperature/module-temperature-high-alarm-threshold
+    temp_high_warning: module-temperature/module-temperature-high-warning-threshold
+    bias_high_alarm: laser-bias-current/laser-bias-current-high-alarm-threshold
+    bias_high_warning: laser-bias-current/laser-bias-current-high-warning-threshold
+
+ErrorTable:
+  rpc: get-interface-information
+  args:
+    extensive: True
+  item: physical-interface
+  view: ErrorView
+
+ErrorView:
+  fields:
+    name: name
+    input_errors: input-error-list/input-errors
+    output_errors: output-error-list/output-errors
+    input_crc_errors: input-error-list/input-crc-errors
+    output_crc_errors: output-error-list/output-crc-errors
+    input_drops: input-error-list/input-drops
+    output_drops: output-error-list/output-drops
+    input_packets: input-error-list/input-packets
+    carrier_transitions: interface-flaps/carrier-transitions

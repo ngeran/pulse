@@ -1,0 +1,13 @@
+InterfaceTable:
+  rpc: get-interface-information
+  args:
+    terse: True
+  item: physical-interface
+  view: InterfaceView
+
+InterfaceView:
+  fields:
+    name: name
+    admin_status: admin-status
+    oper_status: oper-status
+    description: description

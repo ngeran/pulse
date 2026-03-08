@@ -1,0 +1,109 @@
+Screen {
+    background: #0a0a0a;
+}
+
+Header {
+    background: #1a1a1a;
+    color: #00ff00;
+    text-style: bold;
+}
+
+#ws-status {
+    dock: top;
+    width: 100%;
+    content-align: right middle;
+    padding: 0 1;
+    background: #1a1a1a;
+    text-style: bold;
+}
+
+.status-connected {
+    color: #00ff00;
+}
+
+.status-disconnected {
+    color: #ff0000;
+}
+
+#spof-alert {
+    height: 3;
+    content-align: center middle;
+    text-style: bold;
+    margin: 1 2;
+    border: double white;
+}
+
+#device-tree {
+    width: 30%;
+    background: #121212;
+    border-right: solid #333333;
+}
+
+#health-dash {
+    height: 60%;
+    background: #111111;
+    border-bottom: solid #333333;
+    padding: 1 2;
+}
+
+#event-log {
+    height: 40%;
+    background: #000000;
+    color: #cccccc;
+
+}
+
+.green {
+    color: #00ff00;
+}
+
+.yellow {
+    color: #ffff00;
+}
+
+.red {
+    color: #ff0000;
+}
+
+ConnectionScreen {
+    align: center middle;
+}
+
+#connection-panel {
+    width: 60;
+    height: auto;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+#title {
+    width: 100%;
+    content-align: center middle;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+Label {
+    margin-top: 1;
+    color: #888888;
+}
+
+Input {
+    margin-bottom: 1;
+    border: solid #333333;
+}
+
+Input:focus {
+    border: solid $accent;
+}
+
+#button-row {
+    margin-top: 1;
+    align: right middle;
+    height: auto;
+}
+
+Button {
+    margin-left: 1;
+}
