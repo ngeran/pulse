@@ -1,0 +1,17 @@
+/* Realtime Footer Widget Styles */
+/* ────────────────────────────────────────────────────────────────────────────── */
+
+RealtimeFooter {
+    height: 3;
+    background: #1a1a1a;
+    border-top: solid #3a3a3a;
+    padding: 0 1;
+    width: 1fr;
+}
+
+RealtimeFooter > Static {
+    background: #1a1a1a;
+    color: #888888;
+    align: left middle;
+    height: 3;
+}

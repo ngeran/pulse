@@ -5,11 +5,14 @@ from textual.reactive import reactive
 from backend.core.connection_engine import ConnectionManager
 from backend.core.interface_discovery import InterfaceDiscovery
 from backend.core.logic_engine import HealthScoringEngine
+from backend.core.device_manager import DeviceManager
 from backend.core.events import ConnectionEvent, HealthEvent, EventMessage
 from backend.config.loader import load_config
 from backend.utils.logging import setup_logging, logger
 from frontend.ui.screens.connection import ConnectionScreen
 from frontend.ui.screens.health_dashboard import HealthDashboardScreen
+from frontend.ui.screens.realtime_dashboard import RealtimeDashboardScreen
+from frontend.ui.screens.device_management import DeviceManagementScreen
 from frontend.ui.widgets.pulse_header import PulseHeader
 from backend.api.server import run_server, start_event_broadcaster
 import asyncio
@@ -46,6 +49,8 @@ class PulseApp(App):
         ("c", "push_connection", "Connect"),
         ("d", "disconnect_selected", "Disconnect"),
         ("h", "push_health_dashboard", "Health Dashboard"),
+        ("r", "push_realtime_dashboard", "Realtime Dashboard"),
+        ("m", "push_device_management", "Device Management"),
         ("q", "quit", "Quit")
     ]
 
@@ -58,6 +63,7 @@ class PulseApp(App):
         )
         self.discovery = InterfaceDiscovery(self.conn_mgr, cache_ttl=self.config.cache_ttl)
         self.health_engine = HealthScoringEngine(self.conn_mgr, self.config)
+        self.device_manager = DeviceManager(self.conn_mgr)
         self.ws_connected = False
 
     def compose(self) -> ComposeResult:
@@ -75,6 +81,8 @@ class PulseApp(App):
         logger.info("app_mounting", app_name="PulseApp")
         self.install_screen(ConnectionScreen(), name="connection")
         self.install_screen(HealthDashboardScreen(), name="health_dashboard")
+        self.install_screen(RealtimeDashboardScreen(), name="realtime_dashboard")
+        self.install_screen(DeviceManagementScreen(), name="device_management")
         # Enable console logging for visibility
         setup_logging(console_output=True)
         logger.info("app_logging_initialized", console_enabled=True)
@@ -359,6 +367,14 @@ class PulseApp(App):
     def action_push_health_dashboard(self) -> None:
         """Action to push the health dashboard screen."""
         self.push_screen("health_dashboard")
+
+    def action_push_realtime_dashboard(self) -> None:
+        """Action to push the realtime dashboard screen."""
+        self.push_screen("realtime_dashboard")
+
+    def action_push_device_management(self) -> None:
+        """Action to push the device management screen."""
+        self.push_screen("device_management")
 
 if __name__ == "__main__":
     app = PulseApp()

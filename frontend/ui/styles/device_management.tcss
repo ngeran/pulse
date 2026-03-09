@@ -1,0 +1,347 @@
+/* Device Management Screen Styles */
+/* ────────────────────────────────────────────────────────────────────────────── */
+
+DeviceManagementScreen {
+    background: #000000;
+}
+
+/* Device Management Header Widget Styles */
+DeviceManagementHeader {
+    height: 3;
+    background: #000000;
+    border-bottom: solid #3a3a3a;
+    padding: 0 1;
+    width: 1fr;
+}
+
+DeviceManagementHeader > Static {
+    background: #000000;
+    color: #ffffff;
+    text-style: bold;
+    align: left middle;
+    height: 3;
+}
+
+/* Device Management Footer Widget Styles */
+DeviceManagementFooter {
+    height: 3;
+    background: #1a1a1a;
+    border-top: solid #3a3a3a;
+    padding: 0 1;
+    width: 1fr;
+}
+
+DeviceManagementFooter > Static {
+    background: #1a1a1a;
+    color: #888888;
+    align: left middle;
+    height: 3;
+}
+
+/* Root container */
+#dm-container {
+    height: 100%;
+}
+
+/* Main content area */
+#dm-main {
+    height: 1fr;
+}
+
+/* 2x2 Grid Layout */
+#dm-top-row, #dm-bottom-row {
+    height: 1fr;
+}
+
+/* Make all panels focusable */
+#dm-sessions-panel,
+#dm-interfaces-panel,
+#dm-activity-panel,
+#dm-polling-panel {
+    /* Ensure panels can receive focus */
+}
+
+#dm-sessions-panel:focus,
+#dm-interfaces-panel:focus,
+#dm-activity-panel:focus,
+#dm-polling-panel:focus {
+    outline: none;
+}
+
+/* Panel clickability */
+#dm-sessions-panel:hover,
+#dm-interfaces-panel:hover,
+#dm-activity-panel:hover,
+#dm-polling-panel:hover {
+    background: #050510;
+}
+
+/* Top Left - Sessions (wider) */
+#dm-sessions-panel {
+    width: 60%;
+    height: 100%;
+    background: #000000;
+    border: solid #3a3a3a !important;
+    padding: 0;
+}
+
+#dm-sessions-panel > * {
+    background: #000000;
+}
+
+#dm-sessions-panel:focus-within {
+    border: solid #00d7ff !important;
+}
+
+/* Top Right - Interfaces */
+#dm-interfaces-panel {
+    width: 40%;
+    height: 100%;
+    background: #000000;
+    border: solid #3a3a3a !important;
+    padding: 0;
+    border-left: none;
+}
+
+#dm-interfaces-panel > * {
+    background: #000000 !important;
+    border: none !important;
+}
+
+#dm-interfaces-panel:focus-within {
+    border: solid #00d7ff !important;
+    background: #000000 !important;
+}
+
+#dm-interfaces-panel:focus-within > * {
+    background: #000000 !important;
+    border: none !important;
+}
+
+/* Bottom Left - Activity Log (wider) */
+#dm-activity-panel {
+    width: 60%;
+    height: 100%;
+    background: #000000;
+    border: solid #3a3a3a !important;
+    padding: 0;
+    border-top: none;
+}
+
+#dm-activity-panel > * {
+    background: #000000 !important;
+    border: none !important;
+}
+
+#dm-activity-panel:focus-within {
+    border: solid #00d7ff !important;
+    background: #000000 !important;
+}
+
+#dm-activity-panel:focus-within > * {
+    background: #000000 !important;
+    border: none !important;
+    outline: none !important;
+}
+
+/* Bottom Right - Polling */
+#dm-polling-panel {
+    width: 40%;
+    height: 100%;
+    background: #000000;
+    border: solid #3a3a3a !important;
+    padding: 0;
+    border-left: none;
+    border-top: none;
+}
+
+#dm-polling-panel > * {
+    background: #000000 !important;
+}
+
+#dm-polling-panel:focus-within {
+    border: solid #00d7ff !important;
+    background: #000000 !important;
+}
+
+#dm-polling-panel:focus-within > * {
+    background: #000000 !important;
+}
+
+#dm-activity-log, #dm-device-list, #dm-interface-list {
+    height: 1fr;
+    overflow: auto;
+    background: #000000;
+    border: none !important;
+    outline: none !important;
+}
+
+#dm-activity-log:focus,
+#dm-device-list:focus,
+#dm-interface-list:focus {
+    border: none !important;
+    outline: none !important;
+}
+
+/* Ensure all widgets inside panels have black background */
+#dm-activity-log > *,
+#dm-device-list > *,
+#dm-interface-list > * {
+    background: #000000;
+    border: none !important;
+}
+
+/* Interface table styling */
+#dm-interface-list {
+    background: #000000 !important;
+    border: none !important;
+    outline: none !important;
+}
+
+#dm-interface-list:focus {
+    outline: none !important;
+    border: none !important;
+}
+
+#dm-interface-list > Header {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+#dm-interface-list > Header > HeaderCell {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border: solid #3a3a3a !important;
+}
+
+#dm-interface-list > DataTable {
+    background: #000000 !important;
+    border: none !important;
+    outline: none !important;
+}
+
+#dm-interface-list > DataRow {
+    background: #000000 !important;
+    border: none !important;
+}
+
+#dm-interface-list > DataRow:hover {
+    background: #1a1a1a !important;
+}
+
+#dm-interface-list > DataCell {
+    background: #000000 !important;
+    border: solid #3a3a3a !important;
+}
+
+#dm-polling-status {
+    height: 1fr;
+    padding: 1 2;
+    background: #000000;
+}
+
+/* Border-title styling */
+#dm-sessions-panel > .border_title,
+#dm-interfaces-panel > .border_title,
+#dm-activity-panel > .border_title,
+#dm-polling-panel > .border_title {
+    background: #000000;
+    color: #0088ff;
+    text-style: bold;
+    padding: 0 1;
+    height: 1;
+    border-bottom: solid #3a3a3a;
+}
+
+/* DataTable header styling override */
+#dm-interface-list > Header {
+    background: #000000 !important;
+}
+
+#dm-interface-list > Header > HeaderCell {
+    background: #000000 !important;
+    color: #ffffff !important;
+}
+
+/* Focus styling - all panels get light blue border when clicked */
+#dm-sessions-panel:focus-within,
+#dm-interfaces-panel:focus-within,
+#dm-activity-panel:focus-within,
+#dm-polling-panel:focus-within {
+    border: solid #00d7ff !important;
+}
+
+#dm-sessions-panel:focus-within > .border_title,
+#dm-interfaces-panel:focus-within > .border_title,
+#dm-activity-panel:focus-within > .border_title,
+#dm-polling-panel:focus-within > .border_title {
+    background: #00d7ff !important;
+    color: #000000 !important;
+}
+
+/* Device item styling */
+DeviceItem {
+    height: auto;
+    padding: 0 1;
+    border-bottom: solid #1a1a1a;
+}
+
+DeviceItem:hover {
+    background: #1a1a1a;
+}
+
+DeviceItem.selected {
+    background: #0a0a2a;
+    border-left: solid #0088ff;
+}
+
+/* Status colors */
+.status-connected {
+    color: #00ff00;
+    text-style: bold;
+}
+
+.status-connecting {
+    color: #ffff00;
+    text-style: bold;
+}
+
+.status-failed {
+    color: #ff0000;
+    text-style: bold;
+}
+
+.status-disconnected {
+    color: #888888;
+}
+
+/* Group header */
+GroupHeader {
+    height: 2;
+    padding: 0 1;
+    background: #0a0a1a;
+    border-bottom: solid #3a3a3a;
+    border-top: solid #3a3a3a;
+    text-style: bold;
+    color: #0088ff;
+}
+
+/* Scrollbar styling */
+#dm-device-list Scrollbar,
+#dm-interface-list Scrollbar,
+#dm-activity-log Scrollbar {
+    background: #000000;
+}
+
+#dm-device-list ScrollbarVertical > .vertical-scrollbar,
+#dm-interface-list ScrollbarVertical > .vertical-scrollbar,
+#dm-activity-log ScrollbarVertical > .vertical-scrollbar {
+    background: #2a2a2a;
+}
+
+#dm-device-list ScrollbarVertical > .vertical-scrollbar-thumb,
+#dm-interface-list ScrollbarVertical > .vertical-scrollbar-thumb,
+#dm-activity-log ScrollbarVertical > .vertical-scrollbar-thumb {
+    background: #0088ff;
+}
