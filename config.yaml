@@ -4,6 +4,37 @@ pulse:
   retry_attempts: 3
   cache_ttl: 300
 
+  # WebSocket and API Settings
+  api:
+    host: "0.0.0.0"
+    port: 8001
+    reload: false
+    log_level: "info"
+    workers: 1
+
+  websocket:
+    ping_interval: 10  # seconds
+    ping_timeout: 10
+    close_timeout: 1
+    max_message_size: 1048576  # 1MB
+    reconnect:
+      enabled: true
+      base_delay: 1  # seconds
+      max_delay: 30
+      jitter: 0.2  # ±20%
+
+  # Message handling
+  events:
+    callback_timeout: 5.0  # seconds
+    buffer_size: 1000  # max events to buffer
+    serialize_events: true
+
+  # REST API
+  rest_api:
+    enabled: true
+    rate_limit: 100  # requests per minute
+    timeout: 30  # seconds
+
   thresholds:
     # Optical power thresholds (dBm)
     optical_power:

@@ -10,76 +10,88 @@ class ConnectionScreen(ModalScreen):
     DEFAULT_CSS = """
     ConnectionScreen {
         align: center middle;
-        background: #000000aa;
+        background: #000000;
     }
 
     #connection-panel {
         width: 60;
         height: auto;
-        border: solid #3a3a3a;
+        border: solid #2a2a2a;
         background: #000000;
         padding: 1 2;
     }
 
     #title {
-        color: #00d7ff;
+        color: #4a4a4a;
         text-style: bold;
         text-align: center;
         margin-top: 0;
+        background: #000000;
     }
 
     Label {
-        color: #ffffff;
+        color: #888888;
         margin-top: 1;
+        background: #000000;
     }
 
     Input {
         margin-bottom: 1;
-        border: solid #3a3a3a;
-        background: #000000;
-        color: #ffffff;
+        border: solid #2a2a2a;
+        background: #0a0a0a;
+        color: #cccccc;
     }
 
     Input:focus {
-        border: solid #00d7ff;
+        border: solid #3a3a3a;
+        background: #111111;
     }
 
     #button-row {
         margin-top: 1;
         align: center middle;
         height: auto;
+        background: #000000;
     }
 
     Button {
         margin: 0 1;
         background: #1a1a1a;
-        border: solid #3a3a3a;
-        color: #ffffff;
+        border: solid #444444;
+        color: #aaaaaa;
+        text-style: none;
     }
 
     Button:hover {
         background: #2a2a2a;
-        border: solid #00d7ff;
+        border: solid #555555;
+        color: #cccccc;
     }
 
     Button.-success {
-        background: #003300;
-        border: solid #00ff00;
-        color: #00ff00;
+        background: #1a2a1a;
+        border: solid #3a6a3a;
+        color: #5aba5a;
+        text-style: none;
     }
 
     Button.-success:hover {
-        background: #004400;
+        background: #2a3a2a;
+        border: solid #4a7a4a;
+        color: #6aca6a;
     }
 
     Button.-error {
-        background: #330000;
-        border: solid #ff0000;
-        color: #ff0000;
+        background: #2a1a1a;
+        border: solid #6a3a3a;
+        color: #ba5a5a;
+        text-style: none;
     }
 
     Button.-error:hover {
-        background: #440000;
+        background: #3a2a2a;
+        border: solid #7a4a4a;
+        color: #ca6a6a;
     }
     """
 

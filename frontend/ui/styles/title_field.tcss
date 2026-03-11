@@ -1,0 +1,13 @@
+/* TitleField - Dynamic screen title widget */
+TitleField {
+    background: #000000;
+    height: 100%;
+    width: auto;
+    align: left middle;
+    border: none;
+    padding: 0;
+}
+
+TitleField:focus {
+    border: none;
+}

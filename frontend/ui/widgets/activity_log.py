@@ -1,0 +1,225 @@
+"""
+activity_log.py
+───────────────
+Reusable realtime activity log widget for displaying server messages.
+
+Subscribes to backend events and displays them with timestamps and
+color-coded severity levels. Can be used across multiple screens.
+"""
+
+from typing import Optional, List
+from datetime import datetime
+from textual.widgets import Static
+from textual.reactive import reactive
+
+
+class ActivityLog(Static):
+    """
+    Realtime activity log with timestamps and color-coded entries.
+
+    Features:
+    - Timestamps on all entries (HH:MM:SS format)
+    - Single-line format for space efficiency
+    - Color-coded by severity (info, success, warning, error)
+    - Auto-scroll to latest entry
+    - Configurable max entries
+    - Optional WebSocket event subscription
+
+    Example usage:
+        yield ActivityLog(id="activity-log")
+
+        # Add log entry
+        log = query_one("#activity-log", ActivityLog)
+        log.add_entry("Connected to device", "success")
+    """
+
+    # Log severity icons
+    LOG_ICONS = {
+        "info": "→",
+        "success": "✓",
+        "warning": "⚠",
+        "error": "✖",
+    }
+
+    # Log colors
+    LOG_COLORS = {
+        "info": "#0088ff",      # Cyan/blue
+        "success": "#00ff00",   # Green
+        "warning": "#ffff00",   # Yellow
+        "error": "#ff0000",     # Red
+    }
+
+    def __init__(
+        self,
+        max_entries: int = 100,
+        show_timestamps: bool = True,
+        auto_subscribe: bool = True,
+        **kwargs
+    ):
+        """
+        Initialize the activity log.
+
+        Args:
+            max_entries: Maximum number of entries to keep (default: 100)
+            show_timestamps: Show timestamps on entries (default: True)
+            auto_subscribe: Automatically subscribe to backend events (default: True)
+        """
+        super().__init__(**kwargs)
+        self._max_entries = max_entries
+        self._show_timestamps = show_timestamps
+        self._auto_subscribe = auto_subscribe
+        self._entries: List[tuple] = []  # (timestamp, message, severity)
+        self._event_subscription_id = None
+
+    def on_mount(self) -> None:
+        """Initialize the log and optionally subscribe to events."""
+        self._update_display()
+
+        # Subscribe to backend events if requested
+        if self._auto_subscribe:
+            self._subscribe_to_events()
+
+    def on_unmount(self) -> None:
+        """Clean up event subscription on unmount."""
+        self._unsubscribe_from_events()
+
+    def _subscribe_to_events(self) -> None:
+        """Subscribe to backend connection and health events."""
+        try:
+            app = self.app
+            if hasattr(app, 'conn_mgr') and app.conn_mgr:
+                # Subscribe to connection events
+                self._event_subscription_id = app.conn_mgr.subscribe_to_events(
+                    self._handle_backend_event
+                )
+        except Exception as e:
+            # Silently fail - log will still work without event subscription
+            pass
+
+    def _unsubscribe_from_events(self) -> None:
+        """Unsubscribe from backend events."""
+        try:
+            app = self.app
+            if hasattr(app, 'conn_mgr') and app.conn_mgr and self._event_subscription_id:
+                app.conn_mgr.unsubscribe_from_events(self._event_subscription_id)
+                self._event_subscription_id = None
+        except Exception:
+            pass
+
+    def _handle_backend_event(self, event) -> None:
+        """
+        Handle backend events and add them to the log.
+
+        Args:
+            event: EventMessage from backend
+        """
+        try:
+            from backend.core.events import EventMessage, ConnectionEvent, HealthEvent
+
+            if not isinstance(event, EventMessage):
+                return
+
+            # Map event types to log severity
+            severity = "info"
+            message = event.message
+
+            if event.event_type == ConnectionEvent.DEVICE_CONNECTED:
+                severity = "success"
+                message = f"✓ Connected: {event.device_name}"
+            elif event.event_type == ConnectionEvent.DEVICE_DISCONNECTED:
+                severity = "warning"
+                message = f"⚠ Disconnected: {event.device_name}"
+            elif event.event_type == ConnectionEvent.CONNECTION_FAILED:
+                severity = "error"
+                message = f"✖ Connection failed: {event.device_name}"
+            elif event.event_type == HealthEvent.CIRCUIT_SICK:
+                severity = "warning"
+                message = f"⚠ Health degraded: {event.device_name}"
+            elif event.event_type == HealthEvent.CIRCUIT_DEAD:
+                severity = "error"
+                message = f"✖ Circuit critical: {event.device_name}"
+            elif event.event_type == HealthEvent.SPOF_DETECTED:
+                severity = "error"
+                message = f"⚠ SPOF detected: {event.device_name}"
+
+            # Add entry from event
+            self.add_entry(message, severity)
+
+        except Exception:
+            # If event parsing fails, just add as info
+            self.add_entry(str(event), "info")
+
+    def add_entry(self, message: str, severity: str = "info", timestamp: Optional[str] = None) -> None:
+        """
+        Add a log entry.
+
+        Args:
+            message: Log message
+            severity: Entry severity (info, success, warning, error)
+            timestamp: Optional timestamp (defaults to current time)
+        """
+        if timestamp is None:
+            timestamp = datetime.now().strftime("%H:%M:%S")
+
+        # Normalize severity
+        severity = severity.lower()
+        if severity not in self.LOG_ICONS:
+            severity = "info"
+
+        self._entries.append((timestamp, message, severity))
+
+        # Trim old entries
+        if len(self._entries) > self._max_entries:
+            self._entries = self._entries[-self._max_entries:]
+
+        self._update_display()
+
+    def _update_display(self) -> None:
+        """Update the log display with all entries."""
+        if not self._entries:
+            self.update("[dim]No activity yet[/]")
+            return
+
+        lines = []
+        for timestamp, message, severity in self._entries:
+            icon = self.LOG_ICONS.get(severity, "→")
+            color = self.LOG_COLORS.get(severity, "#ffffff")
+
+            if self._show_timestamps:
+                lines.append(
+                    f"[dim]{timestamp}[/] [{color}]{icon}[/{color}] {message}"
+                )
+            else:
+                lines.append(
+                    f"[{color}]{icon}[/{color}] {message}"
+                )
+
+        self.update("\n".join(lines))
+
+    def clear(self) -> None:
+        """Clear all log entries."""
+        self._entries = []
+        self._update_display()
+
+    def write_line(self, line: str) -> None:
+        """
+        Add a plain line to the log (compatibility with Log widget).
+
+        Args:
+            line: Text line to add
+        """
+        # Try to detect severity from common prefixes
+        severity = "info"
+        if line.startswith("[ERROR]") or line.startswith("ERROR:"):
+            severity = "error"
+            line = line.replace("[ERROR]", "").replace("ERROR:", "").strip()
+        elif line.startswith("[WARNING]") or line.startswith("WARN:"):
+            severity = "warning"
+            line = line.replace("[WARNING]", "").replace("WARN:", "").strip()
+        elif line.startswith("[SUCCESS]") or line.startswith("✓"):
+            severity = "success"
+            line = line.replace("[SUCCESS]", "").replace("✓", "").strip()
+        elif line.startswith("[INFO]"):
+            line = line.replace("[INFO]", "").strip()
+
+        self.add_entry(line, severity)

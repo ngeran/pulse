@@ -11,6 +11,7 @@ from textual.app import ComposeResult
 from pathlib import Path
 from frontend.ui.widgets.realtime_header import RealtimeHeader
 from frontend.ui.widgets.realtime_footer import RealtimeFooter
+from frontend.ui.widgets.focus_panel import FocusPanel
 
 
 class DeviceListWidget(Static):
@@ -28,7 +29,7 @@ class InterfaceTableWidget(DataTable):
         """Initialize the interface table."""
         self.add_columns("Interface", "Status", "RX Power", "TX Power", "Errors")
         self.cursor_type = "row"
-        self.zebra_stripes = True
+        self.zebra_stripes = False  # Disabled for pure black background
 
 
 class AlertTableWidget(DataTable):
@@ -38,7 +39,7 @@ class AlertTableWidget(DataTable):
         """Initialize the alert table."""
         self.add_columns("Severity", "Device", "Interface", "Message", "Time")
         self.cursor_type = "row"
-        self.zebra_stripes = True
+        self.zebra_stripes = False  # Disabled for pure black background
 
 
 class DetailPanelWidget(Static):
@@ -53,13 +54,15 @@ class RealtimeDashboardScreen(Screen):
     """A new dashboard screen with 3-column layout."""
 
     # Load all stylesheets
+    _CSS_PATH_PANELS = Path(__file__).parent.parent / "styles" / "panels.tcss"
     _CSS_PATH_DASHBOARD = Path(__file__).parent.parent / "styles" / "realtime_dashboard.tcss"
     _CSS_PATH_FOOTER = Path(__file__).parent.parent / "styles" / "footer.tcss"
 
+    _css_panels = _CSS_PATH_PANELS.read_text() if _CSS_PATH_PANELS.exists() else ""
     _css_dashboard = _CSS_PATH_DASHBOARD.read_text() if _CSS_PATH_DASHBOARD.exists() else ""
     _css_footer = _CSS_PATH_FOOTER.read_text() if _CSS_PATH_FOOTER.exists() else ""
 
-    CSS = _css_dashboard + "\n" + _css_footer
+    CSS = _css_panels + "\n" + _css_dashboard + "\n" + _css_footer
 
     def compose(self) -> ComposeResult:
         """Compose the dashboard layout."""
@@ -70,23 +73,19 @@ class RealtimeDashboardScreen(Screen):
 
             # Main content area with 3 columns
             with Horizontal(id="rt-main"):
-                # Left column: Devices
-                with Container(id="rt-left-wrap") as c:
-                    c.border_title = "Devices"
+                # Left column: Devices (orange variant)
+                with FocusPanel("Devices", id="rt-left-wrap", classes="panel-orange"):
                     yield DeviceListWidget(id="rt-left")
 
                 # Center column: Interfaces (top) and Alerts (bottom)
                 with Vertical(id="rt-center"):
-                    with Container(id="rt-itable-wrap") as c:
-                        c.border_title = "Interfaces"
+                    with FocusPanel("Interfaces", id="rt-itable-wrap", classes="panel-orange"):
                         yield InterfaceTableWidget(id="rt-interface-table")
-                    with Container(id="rt-alert-wrap") as c:
-                        c.border_title = "Alerts"
+                    with FocusPanel("Alerts", id="rt-alert-wrap", classes="panel-orange"):
                         yield AlertTableWidget(id="rt-alert-table")
 
-                # Right column: Detail panel
-                with Container(id="rt-right-wrap") as c:
-                    c.border_title = "Detail"
+                # Right column: Detail panel (orange variant)
+                with FocusPanel("Detail", id="rt-right-wrap", classes="panel-orange"):
                     yield DetailPanelWidget(id="rt-right")
 
             # Footer

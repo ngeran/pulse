@@ -174,9 +174,11 @@ class ConnectionManager:
         self.sessions: Dict[str, DeviceSession] = {}
         self.subscribers: List[Callable[[EventMessage], Any]] = []
         self._heartbeat_task: Optional[asyncio.Task] = None
+        self._lock = asyncio.Lock()  # Lock for thread-safe operations
 
     async def subscribe_to_events(self, callback: Callable[[EventMessage], Any]) -> None:
-        self.subscribers.append(callback)
+        async with self._lock:
+            self.subscribers.append(callback)
 
     async def _emit_event(self, event_type: ConnectionEvent, device_name: str, data: Optional[Dict[str, Any]] = None):
         msg = EventMessage(event_type=event_type, device_name=device_name, data=data)
@@ -190,14 +192,15 @@ class ConnectionManager:
                 logger.error("event_callback_error", error=str(e))
 
     async def connect_device(self, host: str, user: str, password: Optional[str] = None):
-        if host in self.sessions and self.sessions[host].state == ConnectionState.CONNECTED:
-            return self.sessions[host]
+        async with self._lock:
+            if host in self.sessions and self.sessions[host].state == ConnectionState.CONNECTED:
+                return self.sessions[host]
 
-        if len(self.sessions) >= self.max_sessions:
-            raise RuntimeError(f"Connection pool full (max {self.max_sessions})")
+            if len(self.sessions) >= self.max_sessions:
+                raise RuntimeError(f"Connection pool full (max {self.max_sessions})")
 
-        session = DeviceSession(host, user, password)
-        self.sessions[host] = session
+            session = DeviceSession(host, user, password)
+            self.sessions[host] = session
 
         def report_progress(message: str):
             asyncio.create_task(self._emit_event(ConnectionEvent.PROGRESS, host, {"message": message}))
@@ -206,34 +209,36 @@ class ConnectionManager:
         for attempt in range(self.retry_limit):
             logger.info("attempting_connection", device=host, attempt=attempt+1)
             report_progress(f"Connection attempt {attempt + 1}/{self.retry_limit}")
-            
+
             success = await session.connect(progress_callback=report_progress)
             if success:
                 await self._emit_event(ConnectionEvent.CONNECTED, host)
                 return session
-            
+
             await self._emit_event(ConnectionEvent.ERROR, host, {"attempt": attempt + 1})
             if attempt < self.retry_limit - 1:
                 report_progress(f"Retrying in {backoff}s...")
                 await asyncio.sleep(backoff)
                 backoff *= 2  # Exponential backoff
 
-        session.state = ConnectionState.FAILED
+        async with self._lock:
+            self.sessions[host].state = ConnectionState.FAILED
         return session
 
     async def disconnect_device(self, host: str):
         """Gracefully disconnects a device and removes it from active sessions."""
-        if host in self.sessions:
-            session = self.sessions[host]
-            logger.info("disconnecting_device", device=host)
-            
-            try:
-                # Add timeout to avoid hanging if the device is unresponsive
-                await asyncio.wait_for(session.close(), timeout=5.0)
-            except Exception as e:
-                logger.error("disconnect_error", error=str(e), device=host)
-            finally:
-                session.state = ConnectionState.DISCONNECTED
+        async with self._lock:
+            if host in self.sessions:
+                session = self.sessions[host]
+                logger.info("disconnecting_device", device=host)
+
+                try:
+                    # Add timeout to avoid hanging if the device is unresponsive
+                    await asyncio.wait_for(session.close(), timeout=5.0)
+                except Exception as e:
+                    logger.error("disconnect_error", error=str(e), device=host)
+                finally:
+                    session.state = ConnectionState.DISCONNECTED
                 await self._emit_event(ConnectionEvent.DISCONNECTED, host)
 
     async def start_heartbeat(self, interval: int = 30):
@@ -257,11 +262,12 @@ class ConnectionManager:
                      pass
 
     async def close_all(self):
-        if self._heartbeat_task:
-            self._heartbeat_task.cancel()
-        for session in self.sessions.values():
-            await session.close()
-        self.sessions.clear()
+        async with self._lock:
+            if self._heartbeat_task:
+                self._heartbeat_task.cancel()
+            for session in self.sessions.values():
+                await session.close()
+            self.sessions.clear()
 
     async def __aenter__(self):
         return self

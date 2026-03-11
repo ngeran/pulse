@@ -5,20 +5,20 @@ Comprehensive device management interface with grouping, polling, and interface 
 """
 
 import asyncio
-from textual.widgets import Static, Button, Select, DataTable, Log
-from textual.containers import Horizontal, Vertical, Container
+from textual.widgets import Static, Button, Select, DataTable
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.app import ComposeResult
-from textual import on
-from textual.events import Click
 from pathlib import Path
 from typing import Optional
 from frontend.ui.widgets.device_management_header import DeviceManagementHeader
 from frontend.ui.widgets.device_management_footer import DeviceManagementFooter
+from frontend.ui.widgets.focus_panel import FocusPanel, FocusableStatic
+from frontend.ui.widgets.activity_log import ActivityLog
 from textual.reactive import reactive
 
 
-class PollingPanel(Static):
+class PollingPanel(FocusableStatic):
     """Widget displaying polling status and controls."""
 
     def __init__(self, **kwargs):
@@ -47,12 +47,14 @@ class PollingPanel(Static):
 [#ffffff][4][/#ffffff] 15m
 
 [bold]Fiber:[/] [#0088ff]{self.fiber_mode}[/] SM MM
+[dim]───────────[/]
 
-[#0088ff][p][/#0088ff] Toggle polling on/off
-[#0088ff][f][/#0088ff] fetch now (one-shot)
-[#0088ff][s][/#0088ff] Cycle fiber mode filter
-[#0088ff][r][/#0088ff] Rescan SFP transceivers
-[#0088ff][c][/#0088ff] Connect new Device"""
+[#0088ff][p][/#0088ff] Toggle polling
+[#0088ff][f][/#0088ff] Fetch now
+[#0088ff][s][/#0088ff] Fiber mode
+[#0088ff][r][/#0088ff] Rescan SFPs
+[#0088ff][c][/#0088ff] Connect
+[#0088ff][d][/#0088ff] Disconnect"""
 
         self.update(content)
 
@@ -84,12 +86,14 @@ class PollingPanel(Static):
             self.cycle_fiber_mode()
             self.app.notify(f"Fiber mode: {self.fiber_mode}", severity="information")
         elif event.key == "r":
-            self.app.notify("Resanning SFP transceivers...", severity="information")
+            self.app.notify("Rescanning SFP transceivers...", severity="information")
         elif event.key == "c":
             self.app.notify("Opening connection dialog...", severity="information")
+        elif event.key == "d":
+            self.app.notify("Disconnecting devices...", severity="warning")
 
 
-class DeviceItem(Static):
+class DeviceItem(FocusableStatic):
     """Widget representing a device in the list."""
 
     def __init__(self, host: str, status: str, group: str = "", **kwargs):
@@ -118,7 +122,7 @@ class DeviceItem(Static):
         self.app.select_device(self.host)
 
 
-class DeviceList(Static):
+class DeviceList(FocusableStatic):
     """Widget displaying the list of devices."""
 
     def __init__(self, **kwargs):
@@ -151,7 +155,7 @@ class InterfaceList(DataTable):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.cursor_type = "row"
-        self.zebra_stripes = True
+        self.zebra_stripes = False  # Disabled for pure black background
 
     def on_mount(self) -> None:
         """Initialize the interface table - empty initially."""
@@ -195,7 +199,7 @@ class InterfaceList(DataTable):
             )
 
 
-class DeviceDetails(Static):
+class DeviceDetails(FocusableStatic):
     """Widget showing device details."""
 
     def __init__(self, **kwargs):
@@ -236,8 +240,20 @@ class DeviceManagementScreen(Screen):
     """Device management screen with grouping and polling capabilities."""
 
     # Load stylesheets
-    _CSS_PATH = Path(__file__).parent.parent / "styles" / "device_management.tcss"
-    CSS = _CSS_PATH.read_text() if _CSS_PATH.exists() else ""
+    _PANELS_CSS = Path(__file__).parent.parent / "styles" / "panels.tcss"
+    _SCREEN_CSS = Path(__file__).parent.parent / "styles" / "device_management.tcss"
+    _TITLE_CSS = Path(__file__).parent.parent / "styles" / "title_field.tcss"
+    _ACTIVITY_CSS = Path(__file__).parent.parent / "styles" / "activity_log.tcss"
+
+    CSS = ""
+    if _PANELS_CSS.exists():
+        CSS += _PANELS_CSS.read_text()
+    if _SCREEN_CSS.exists():
+        CSS += _SCREEN_CSS.read_text()
+    if _TITLE_CSS.exists():
+        CSS += _TITLE_CSS.read_text()
+    if _ACTIVITY_CSS.exists():
+        CSS += _ACTIVITY_CSS.read_text()
 
     polling_interval = reactive("MANUAL")
 
@@ -253,25 +269,21 @@ class DeviceManagementScreen(Screen):
                 # Top row: Sessions (left, wider) and Interfaces (right)
                 with Horizontal(id="dm-top-row"):
                     # Top left: Sessions (wider)
-                    with Container(id="dm-sessions-panel") as c:
-                        c.border_title = "Sessions"
+                    with FocusPanel("Sessions", id="dm-sessions-panel"):
                         yield DeviceList(id="dm-device-list")
 
                     # Top right: Interfaces
-                    with Container(id="dm-interfaces-panel") as c:
-                        c.border_title = "Interfaces"
+                    with FocusPanel("Interfaces", id="dm-interfaces-panel"):
                         yield InterfaceList(id="dm-interface-list")
 
                 # Bottom row: Activity Log (left, wider) and Polling (right)
                 with Horizontal(id="dm-bottom-row"):
                     # Bottom left: Activity Log (wider)
-                    with Container(id="dm-activity-panel") as c:
-                        c.border_title = "Activity Log"
-                        yield Log(id="dm-activity-log")
+                    with FocusPanel("Activity Log", id="dm-activity-panel"):
+                        yield ActivityLog(id="dm-activity-log")
 
                     # Bottom right: Polling
-                    with Container(id="dm-polling-panel") as c:
-                        c.border_title = "Polling"
+                    with FocusPanel("Polling", id="dm-polling-panel"):
                         yield PollingPanel(id="dm-polling-status")
 
             # Footer
@@ -295,120 +307,6 @@ class DeviceManagementScreen(Screen):
             ("r", "rescan_sfps", "Rescan SFPs"),
             ("c", "connect_device", "Connect Device"),
         ]
-
-        # Set up panel click handlers
-        self._setup_panel_handlers()
-
-    def _setup_panel_handlers(self) -> None:
-        """Set up click handlers for all panels."""
-        # Panels will be handled by on_click method at screen level
-        pass
-
-    def on_click(self, event: Click) -> None:
-        """Handle click events on panels."""
-        # Get the clicked widget
-        clicked_widget = event.widget
-
-        # Find which panel contains the clicked widget
-        try:
-            if clicked_widget:
-                # Check if click is inside Sessions panel
-                sessions_panel = self.query_one("#dm-sessions-panel", Container)
-                if self._is_child_of(clicked_widget, sessions_panel):
-                    self._on_sessions_panel_click(event)
-                    return
-
-                # Check if click is inside Interfaces panel
-                interfaces_panel = self.query_one("#dm-interfaces-panel", Container)
-                if self._is_child_of(clicked_widget, interfaces_panel):
-                    self._on_interfaces_panel_click(event)
-                    return
-
-                # Check if click is inside Activity Log panel
-                activity_panel = self.query_one("#dm-activity-panel", Container)
-                if self._is_child_of(clicked_widget, activity_panel):
-                    self._on_activity_panel_click(event)
-                    return
-
-                # Check if click is inside Polling panel
-                polling_panel = self.query_one("#dm-polling-panel", Container)
-                if self._is_child_of(clicked_widget, polling_panel):
-                    self._on_polling_panel_click(event)
-                    return
-        except Exception:
-            pass
-
-    def _is_child_of(self, widget, container) -> bool:
-        """Check if a widget is a child of a container."""
-        try:
-            parent = widget.parent
-            while parent:
-                if parent == container or parent.id == container.id:
-                    return True
-                parent = parent.parent
-            return False
-        except Exception:
-            return False
-
-    def _on_sessions_panel_click(self, event) -> None:
-        """Handle click on Sessions panel."""
-        try:
-            device_list = self.query_one("#dm-device-list", DeviceList)
-            device_list.focus()
-        except Exception:
-            pass
-
-        # Also focus the panel itself to trigger border styling
-        try:
-            sessions_panel = self.query_one("#dm-sessions-panel", Container)
-            sessions_panel.focus()
-        except Exception:
-            pass
-
-    def _on_interfaces_panel_click(self, event) -> None:
-        """Handle click on Interfaces panel."""
-        try:
-            interface_list = self.query_one("#dm-interface-list", InterfaceList)
-            interface_list.focus()
-        except Exception:
-            pass
-
-        # Also focus the panel itself
-        try:
-            interfaces_panel = self.query_one("#dm-interfaces-panel", Container)
-            interfaces_panel.focus()
-        except Exception:
-            pass
-
-    def _on_activity_panel_click(self, event) -> None:
-        """Handle click on Activity Log panel."""
-        try:
-            activity_log = self.query_one("#dm-activity-log", Log)
-            activity_log.focus()
-        except Exception:
-            pass
-
-        # Also focus the panel itself
-        try:
-            activity_panel = self.query_one("#dm-activity-panel", Container)
-            activity_panel.focus()
-        except Exception:
-            pass
-
-    def _on_polling_panel_click(self, event) -> None:
-        """Handle click on Polling panel."""
-        try:
-            polling_panel = self.query_one("#dm-polling-status", PollingPanel)
-            polling_panel.focus()
-        except Exception:
-            pass
-
-        # Also focus the panel itself
-        try:
-            polling_panel_container = self.query_one("#dm-polling-panel", Container)
-            polling_panel_container.focus()
-        except Exception:
-            pass
 
     def _update_header(self) -> None:
         """Update header with current device counts."""
@@ -465,7 +363,7 @@ class DeviceManagementScreen(Screen):
 
         # Log to activity log
         try:
-            activity_log = self.query_one("#dm-activity-log", Log)
+            activity_log = self.query_one("#dm-activity-log", ActivityLog)
             activity_log.write_line("[INFO] Fetching data from all devices...")
         except Exception:
             pass

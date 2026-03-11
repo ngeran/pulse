@@ -106,10 +106,10 @@ class PulseApp(App):
         """Starts the FastAPI/WebSocket server in a background task."""
         logger.info("backend_startup_beginning")
 
-        # Attach the broadcaster to the connection manager
-        await start_event_broadcaster(self.conn_mgr)
-        
-        
+        # Attach the broadcaster to both connection manager and health engine
+        await start_event_broadcaster(self.conn_mgr, self.health_engine)
+
+
         logger.info("backend_starting", port=8001)
         
         # We use uvicorn to run the FastAPI app
@@ -138,44 +138,48 @@ class PulseApp(App):
         asyncio.create_task(self.ws_client_loop())
 
     async def ws_client_loop(self):
-        """Maintains a persistent WebSocket connection to the backend to track its health."""
+        """Maintains a persistent WebSocket connection to the backend with exponential backoff."""
         import websockets
+        import random
         uri = "ws://localhost:8001/ws/events"
+
+        # Exponential backoff configuration
+        retry_count = 0
+        base_delay = 1  # Start at 1 second
+        max_delay = 30  # Max 30 seconds
+
         while True:
-            logger.info("ws_client_connecting", uri=uri)
-            self.log_backend_event(f"[INFO] Attempting to connect to backend at {uri}...")
+            logger.info("ws_client_connecting", uri=uri, attempt=retry_count+1)
+            self.log_backend_event(f"[INFO] Attempting to connect to backend at {uri}... (attempt {retry_count + 1})")
             try:
                 async with websockets.connect(uri, ping_interval=10, ping_timeout=10, close_timeout=1) as websocket:
                     logger.info("ws_client_connected")
                     self.set_ws_status(True)
                     self.log_backend_event("[SUCCESS] Connected to Backend WebSocket.")
 
-                    # Send periodic keepalive and listen for messages
-                    async def keepalive():
-                        while True:
-                            await asyncio.sleep(5)
-                            try:
-                                await websocket.send('{"type":"ping"}')
-                            except Exception:
-                                break
+                    # Reset retry count on successful connection
+                    retry_count = 0
 
-                    keepalive_task = asyncio.create_task(keepalive())
-
-                    try:
-                        # Listen for messages from server
-                        async for msg in websocket:
-                            # Handle server events
-                            logger.debug("ws_client_message", message=msg)
-                            await self.handle_ws_message(msg)
-                    finally:
-                        keepalive_task.cancel()
+                    # Listen for messages from server
+                    async for msg in websocket:
+                        # Handle server events
+                        logger.debug("ws_client_message", message=msg)
+                        await self.handle_ws_message(msg)
             except Exception as e:
-                logger.error("ws_client_error", error=str(e))
+                logger.error("ws_client_error", error=str(e), retry=retry_count)
                 self.log_backend_event(f"[ERROR] WS Connection failed: {e}")
 
             self.set_ws_status(False)
-            self.log_backend_event("[WARN] Retrying backend connection in 2 seconds...")
-            await asyncio.sleep(2)  # Reconnect backoff
+
+            # Calculate exponential backoff with jitter
+            delay = min(base_delay * (2 ** retry_count), max_delay)
+            jitter = random.uniform(-0.2, 0.2)  # ±20% jitter
+            delay_with_jitter = delay * (1 + jitter)
+
+            self.log_backend_event(f"[WARN] Retrying backend connection in {delay_with_jitter:.1f} seconds...")
+            await asyncio.sleep(delay_with_jitter)
+
+            retry_count += 1
 
     def log_backend_event(self, msg: str):
         try:
@@ -260,7 +264,35 @@ class PulseApp(App):
             data = json.loads(msg)
             msg_type = data.get("type")
 
-            if msg_type == "health_update":
+            if msg_type == "progress":
+                # Handle progress updates
+                log = self.query_one("#event-log", EventLog)
+                message = data.get("message", "")
+                device = data.get("device", "")
+                log.write_line(f"[PROGRESS] {device}: {message}")
+
+            elif msg_type == "connected":
+                # Handle device connected
+                log = self.query_one("#event-log", EventLog)
+                device = data.get("device", "")
+                log.write_line(f"[CONNECTED] {device}")
+                self.update_device_tree()
+
+            elif msg_type == "disconnected":
+                # Handle device disconnected
+                log = self.query_one("#event-log", EventLog)
+                device = data.get("device", "")
+                log.write_line(f"[DISCONNECTED] {device}")
+                self.update_device_tree()
+
+            elif msg_type == "error":
+                # Handle connection errors
+                log = self.query_one("#event-log", EventLog)
+                device = data.get("device", "")
+                attempt = data.get("attempt", 1)
+                log.write_line(f"[ERROR] {device}: Connection attempt {attempt} failed")
+
+            elif msg_type == "health_update":
                 # Update health dashboard
                 device = data.get("device")
                 event_data = data.get("data", {})
@@ -287,6 +319,16 @@ class PulseApp(App):
                 interface = data.get("interface", "unknown")
                 log.write_line(f"[CRITICAL] {device}: {interface} - Circuit failed")
                 self.update_health_dashboard(device, data.get("score", {}))
+
+            elif msg_type == "spof_detected":
+                # Handle SPOF detection
+                log = self.query_one("#event-log", EventLog)
+                device = data.get("device", "")
+                log.write_line(f"[ALERT] SPOF DETECTED at {device}!")
+                alert = self.query_one("#spof-alert", SPOFAlertPanel)
+                alert.update(f"SPOF DETECTED AT {device.upper()}!")
+                alert.styles.background = "red"
+                alert.styles.visibility = "visible"
 
         except json.JSONDecodeError:
             logger.warning("ws_client_invalid_json", message=msg[:100])

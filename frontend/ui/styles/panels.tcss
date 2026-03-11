@@ -1,0 +1,148 @@
+/*
+ * Reusable FocusPanel Styles
+ * ──────────────────────────────────────────────────────────────────────────────
+ *
+ * Provides consistent styling for focusable panels with border-title support.
+ *
+ * Usage:
+ *   - Default (blue title): FocusPanel("Title")
+ *   - Orange variant: FocusPanel("Title", classes="panel-orange")
+ *   - Green variant: FocusPanel("Title", classes="panel-green")
+ *   - Red variant: FocusPanel("Title", classes="panel-red")
+ */
+
+/* ============================================================================
+   BASE FOCUSPANEL STYLES
+   ============================================================================ */
+
+FocusPanel {
+    background: #000000;
+    border: solid #3a3a3a;
+    padding: 0;
+    height: 100%;
+}
+
+/* Border-title styling - default blue */
+FocusPanel > .border-title {
+    background: #000000;
+    color: #0088ff;
+    text-style: bold;
+    padding: 0 1;
+    height: 1;
+    border-bottom: solid #3a3a3a;
+}
+
+/* Focus state - cyan border */
+FocusPanel:focus {
+    border: solid #00d7ff !important;
+}
+
+FocusPanel:focus > .border-title {
+    background: #00d7ff !important;
+    color: #000000 !important;
+}
+
+/* Ensure all children have black background */
+FocusPanel > * {
+    background: #000000;
+    border: none;
+}
+
+FocusPanel:focus > * {
+    background: #000000 !important;
+    border: none !important;
+}
+
+/* Hover effect - subtle dark blue tint */
+FocusPanel:hover {
+    background: #050510;
+}
+
+/* ============================================================================
+   COLOR VARIANTS
+   ============================================================================ */
+
+/* Orange variant (for realtime screens) */
+FocusPanel.panel-orange > .border-title {
+    background: #000000;
+    color: #ff8800;
+    text-style: bold;
+    padding: 0 1;
+    height: 1;
+    border-bottom: solid #3a3a3a;
+}
+
+FocusPanel.panel-orange:focus > .border-title {
+    background: #ff8800 !important;
+    color: #000000 !important;
+}
+
+/* Green variant */
+FocusPanel.panel-green > .border-title {
+    background: #000000;
+    color: #00ff00;
+    text-style: bold;
+    padding: 0 1;
+    height: 1;
+    border-bottom: solid #3a3a3a;
+}
+
+FocusPanel.panel-green:focus > .border-title {
+    background: #00ff00 !important;
+    color: #000000 !important;
+}
+
+/* Red variant */
+FocusPanel.panel-red > .border-title {
+    background: #000000;
+    color: #ff0000;
+    text-style: bold;
+    padding: 0 1;
+    height: 1;
+    border-bottom: solid #3a3a3a;
+}
+
+FocusPanel.panel-red:focus > .border-title {
+    background: #ff0000 !important;
+    color: #000000 !important;
+}
+
+/* ============================================================================
+   DATABLEPANEL SPECIFIC OVERRIDES
+   ============================================================================ */
+
+/* DataTable styling inside FocusPanel - use descendant selectors */
+FocusPanel DataTable {
+    background: #000000 !important;
+    border: none !important;
+    outline: none !important;
+}
+
+FocusPanel DataTable > Header {
+    background: #000000 !important;
+    color: #ffffff !important;
+}
+
+FocusPanel DataTable > Header > HeaderCell {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border: solid #3a3a3a !important;
+}
+
+FocusPanel DataTable > DataRow {
+    background: #000000 !important;
+    border: none !important;
+}
+
+FocusPanel DataTable > DataRow.--zebra-row {
+    background: #000000 !important;
+}
+
+FocusPanel DataTable > DataRow:hover {
+    background: #1a1a1a !important;
+}
+
+FocusPanel DataTable > DataCell {
+    background: #000000 !important;
+    border: solid #3a3a3a !important;
+}

@@ -110,6 +110,12 @@ async def start_event_broadcaster(conn_mgr: ConnectionManager, health_engine: Op
                 "device": event.device_name
             }
             await ws_manager.broadcast(json.dumps(data))
+        elif event.event_type == ConnectionEvent.DISCONNECTED:
+            data = {
+                "type": "disconnected",
+                "device": event.device_name
+            }
+            await ws_manager.broadcast(json.dumps(data))
         elif event.event_type == ConnectionEvent.ERROR:
             data = {
                 "type": "error",
@@ -140,6 +146,13 @@ async def start_event_broadcaster(conn_mgr: ConnectionManager, health_engine: Op
                 "device": event.device_name,
                 "interface": event.data.get("interface") if event.data else "",
                 "score": event.data.get("score") if event.data else {}
+            }
+            await ws_manager.broadcast(json.dumps(data))
+        elif event.event_type == HealthEvent.SPOF_DETECTED:
+            data = {
+                "type": "spof_detected",
+                "device": event.device_name,
+                "data": event.data
             }
             await ws_manager.broadcast(json.dumps(data))
 
