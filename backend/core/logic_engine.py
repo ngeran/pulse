@@ -1,6 +1,7 @@
 import asyncio
+import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable
 from backend.core.events import HealthEvent, EventMessage
 from backend.core.connection_engine import ConnectionManager
 from backend.core.health_models import (
@@ -28,9 +29,10 @@ class HealthScoringEngine:
     def __init__(self, conn_manager: ConnectionManager, config: Any):
         self.conn_manager = conn_manager
         self.config = config
-        self.subscribers: List[Callable[[EventMessage], Any]] = []
+        self.subscribers: Dict[str, Callable[[EventMessage], Any]] = {}
         self.circuit_states: Dict[str, HealthScore] = {}  # host:interface -> HealthScore
         self.metric_history: Dict[str, Dict[str, MetricHistory]] = {}  # host -> {metric_name: MetricHistory}
+        self._lock = asyncio.Lock()  # Lock for thread-safe operations
 
         # Load thresholds from config
         self.thresholds = self._load_thresholds()
@@ -46,12 +48,44 @@ class HealthScoringEngine:
             min_rx_power_margin=self.config.thresholds.optical_power.get("warn"),
         )
 
-    async def subscribe_to_events(self, callback: Callable[[EventMessage], Any]) -> None:
-        self.subscribers.append(callback)
+    async def subscribe_to_events(self, callback: Callable[[EventMessage], Any]) -> str:
+        """
+        Subscribe to health events.
+
+        Args:
+            callback: Async or sync callable that receives EventMessage
+
+        Returns:
+            Subscription ID that can be used to unsubscribe
+        """
+        async with self._lock:
+            sub_id = str(uuid.uuid4())
+            self.subscribers[sub_id] = callback
+            return sub_id
+
+    async def unsubscribe_from_events(self, sub_id: str) -> bool:
+        """
+        Unsubscribe from health events.
+
+        Args:
+            sub_id: Subscription ID returned from subscribe_to_events()
+
+        Returns:
+            True if subscription was removed, False if not found
+        """
+        async with self._lock:
+            return self.subscribers.pop(sub_id, None) is not None
 
     async def _emit_event(self, event_type: HealthEvent, device_name: str, data: Optional[Dict[str, Any]] = None):
         msg = EventMessage(event_type=event_type, device_name=device_name, data=data)
-        for callback in self.subscribers:
+        for callback in self.subscribers.values():
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(msg)
+                else:
+                    callback(msg)
+            except Exception as e:
+                logger.error("event_callback_error", error=str(e), device=device_name)
             try:
                 if asyncio.iscoroutinefunction(callback):
                     await callback(msg)

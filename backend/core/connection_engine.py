@@ -1,7 +1,8 @@
 import asyncio
 import time
+import uuid
 from enum import Enum
-from typing import Dict, List, Optional, Callable, Any
+from typing import Dict, Optional, Callable, Any
 from jnpr.junos import Device
 from jnpr.junos.exception import ConnectError, ProbeError
 from backend.core.events import ConnectionEvent, EventMessage
@@ -172,22 +173,48 @@ class ConnectionManager:
         self.max_sessions = max_sessions
         self.retry_limit = retry_limit
         self.sessions: Dict[str, DeviceSession] = {}
-        self.subscribers: List[Callable[[EventMessage], Any]] = []
+        self.subscribers: Dict[str, Callable[[EventMessage], Any]] = {}
         self._heartbeat_task: Optional[asyncio.Task] = None
         self._lock = asyncio.Lock()  # Lock for thread-safe operations
 
-    async def subscribe_to_events(self, callback: Callable[[EventMessage], Any]) -> None:
+    async def subscribe_to_events(self, callback: Callable[[EventMessage], Any]) -> str:
+        """
+        Subscribe to connection events.
+
+        Args:
+            callback: Async or sync callable that receives EventMessage
+
+        Returns:
+            Subscription ID that can be used to unsubscribe
+        """
         async with self._lock:
-            self.subscribers.append(callback)
+            sub_id = str(uuid.uuid4())
+            self.subscribers[sub_id] = callback
+            return sub_id
+
+    async def unsubscribe_from_events(self, sub_id: str) -> bool:
+        """
+        Unsubscribe from connection events.
+
+        Args:
+            sub_id: Subscription ID returned from subscribe_to_events()
+
+        Returns:
+            True if subscription was removed, False if not found
+        """
+        async with self._lock:
+            return self.subscribers.pop(sub_id, None) is not None
 
     async def _emit_event(self, event_type: ConnectionEvent, device_name: str, data: Optional[Dict[str, Any]] = None):
         msg = EventMessage(event_type=event_type, device_name=device_name, data=data)
-        for callback in self.subscribers:
+        for callback in self.subscribers.values():
             try:
                 if asyncio.iscoroutinefunction(callback):
                     await callback(msg)
                 else:
                     callback(msg)
+            except Exception as e:
+                logger.error("event_callback_error", error=str(e), device=device_name)
             except Exception as e:
                 logger.error("event_callback_error", error=str(e))
 
@@ -220,6 +247,9 @@ class ConnectionManager:
                 report_progress(f"Retrying in {backoff}s...")
                 await asyncio.sleep(backoff)
                 backoff *= 2  # Exponential backoff
+
+        # All retries exhausted - connection failed
+        await self._emit_event(ConnectionEvent.STATE_CHANGED, host, {"state": "FAILED"})
 
         async with self._lock:
             self.sessions[host].state = ConnectionState.FAILED

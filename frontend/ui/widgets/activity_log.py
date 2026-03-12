@@ -11,9 +11,10 @@ from typing import Optional, List
 from datetime import datetime
 from textual.widgets import Static
 from textual.reactive import reactive
+from frontend.ui.mixins.event_subscriber import EventSubscriberMixin
 
 
-class ActivityLog(Static):
+class ActivityLog(Static, EventSubscriberMixin):
     """
     Realtime activity log with timestamps and color-coded entries.
 
@@ -24,6 +25,7 @@ class ActivityLog(Static):
     - Auto-scroll to latest entry
     - Configurable max entries
     - Optional WebSocket event subscription
+    - Auto-unsubscribe on unmount (via EventSubscriberMixin)
 
     Example usage:
         yield ActivityLog(id="activity-log")
@@ -32,6 +34,13 @@ class ActivityLog(Static):
         log = query_one("#activity-log", ActivityLog)
         log.add_entry("Connected to device", "success")
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._max_entries = max_entries
+        self._show_timestamps = show_timestamps
+        self._auto_subscribe = auto_subscribe
+        self._entries: List[tuple] = []  # (timestamp, message, severity)
 
     # Log severity icons
     LOG_ICONS = {
@@ -69,41 +78,26 @@ class ActivityLog(Static):
         self._show_timestamps = show_timestamps
         self._auto_subscribe = auto_subscribe
         self._entries: List[tuple] = []  # (timestamp, message, severity)
-        self._event_subscription_id = None
 
-    def on_mount(self) -> None:
+    async def on_mount(self) -> None:
         """Initialize the log and optionally subscribe to events."""
         self._update_display()
 
         # Subscribe to backend events if requested
         if self._auto_subscribe:
-            self._subscribe_to_events()
+            await self._subscribe_to_events()
 
-    def on_unmount(self) -> None:
-        """Clean up event subscription on unmount."""
-        self._unsubscribe_from_events()
-
-    def _subscribe_to_events(self) -> None:
-        """Subscribe to backend connection and health events."""
+    async def _subscribe_to_events(self) -> None:
+        """Subscribe to backend connection events."""
         try:
             app = self.app
             if hasattr(app, 'conn_mgr') and app.conn_mgr:
-                # Subscribe to connection events
-                self._event_subscription_id = app.conn_mgr.subscribe_to_events(
+                # Subscribe to connection events and store subscription ID
+                self._event_subscription_id = await app.conn_mgr.subscribe_to_events(
                     self._handle_backend_event
                 )
         except Exception as e:
             # Silently fail - log will still work without event subscription
-            pass
-
-    def _unsubscribe_from_events(self) -> None:
-        """Unsubscribe from backend events."""
-        try:
-            app = self.app
-            if hasattr(app, 'conn_mgr') and app.conn_mgr and self._event_subscription_id:
-                app.conn_mgr.unsubscribe_from_events(self._event_subscription_id)
-                self._event_subscription_id = None
-        except Exception:
             pass
 
     def _handle_backend_event(self, event) -> None:
@@ -123,15 +117,38 @@ class ActivityLog(Static):
             severity = "info"
             message = event.message
 
-            if event.event_type == ConnectionEvent.DEVICE_CONNECTED:
+            if event.event_type == ConnectionEvent.CONNECTED:
                 severity = "success"
-                message = f"✓ Connected: {event.device_name}"
-            elif event.event_type == ConnectionEvent.DEVICE_DISCONNECTED:
+                # Check if this is a device or WebSocket connection
+                if event.device_name == "WebSocket":
+                    msg = event.data.get("message", "WebSocket connected") if event.data else "WebSocket connected"
+                    message = f"✓ {msg}"
+                else:
+                    message = f"✓ Connected: {event.device_name}"
+            elif event.event_type == ConnectionEvent.DISCONNECTED:
                 severity = "warning"
                 message = f"⚠ Disconnected: {event.device_name}"
-            elif event.event_type == ConnectionEvent.CONNECTION_FAILED:
+            elif event.event_type == ConnectionEvent.PROGRESS:
+                severity = "info"
+                # Progress events have message in data
+                progress_msg = event.data.get("message", "") if event.data else ""
+                message = f"→ {event.device_name}: {progress_msg}" if progress_msg else event.message
+            elif event.event_type == ConnectionEvent.ERROR:
                 severity = "error"
-                message = f"✖ Connection failed: {event.device_name}"
+                # Error events have message or attempt info in data
+                if event.data and "message" in event.data:
+                    message = f"✖ {event.device_name}: {event.data['message']}"
+                else:
+                    attempt = event.data.get("attempt", "?") if event.data else "?"
+                    message = f"✖ {event.device_name}: Connection attempt {attempt} failed"
+            elif event.event_type == ConnectionEvent.STATE_CHANGED:
+                state = event.data.get("state", "") if event.data else ""
+                if state == "FAILED":
+                    severity = "error"
+                    message = f"✖ Connection failed: {event.device_name} (all retries exhausted)"
+                else:
+                    severity = "info"
+                    message = f"→ {event.device_name}: State changed to {state}"
             elif event.event_type == HealthEvent.CIRCUIT_SICK:
                 severity = "warning"
                 message = f"⚠ Health degraded: {event.device_name}"

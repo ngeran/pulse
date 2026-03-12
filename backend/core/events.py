@@ -1,6 +1,7 @@
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
+import time
 
 class ConnectionEvent(Enum):
     CONNECTED = "device_connected"
@@ -32,3 +33,6 @@ class EventMessage:
     event_type: Enum
     device_name: str
     data: Optional[Dict[str, Any]] = None
+    correlation_id: Optional[str] = None
+    timestamp: float = field(default_factory=time.time)
+    source: str = "backend"

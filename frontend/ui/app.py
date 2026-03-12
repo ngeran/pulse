@@ -14,9 +14,9 @@ from frontend.ui.screens.health_dashboard import HealthDashboardScreen
 from frontend.ui.screens.realtime_dashboard import RealtimeDashboardScreen
 from frontend.ui.screens.device_management import DeviceManagementScreen
 from frontend.ui.widgets.pulse_header import PulseHeader
-from backend.api.server import run_server, start_event_broadcaster
 import asyncio
 import threading
+from typing import Optional, Any
 
 class DeviceTree(Tree):
     """Tree view of all devices and interfaces"""
@@ -65,6 +65,7 @@ class PulseApp(App):
         self.health_engine = HealthScoringEngine(self.conn_mgr, self.config)
         self.device_manager = DeviceManager(self.conn_mgr)
         self.ws_connected = False
+        self.message_engine = None  # Will be initialized in start_backend()
 
     def compose(self) -> ComposeResult:
         yield PulseHeader(id="pulse-header")
@@ -106,19 +107,30 @@ class PulseApp(App):
         """Starts the FastAPI/WebSocket server in a background task."""
         logger.info("backend_startup_beginning")
 
-        # Attach the broadcaster to both connection manager and health engine
-        await start_event_broadcaster(self.conn_mgr, self.health_engine)
+        # Initialize and start the MessageEngine
+        from backend.core.message_engine import MessageEngine
 
+        self.message_engine = MessageEngine(
+            conn_mgr=self.conn_mgr,
+            health_engine=self.health_engine,
+            ws_port=8001,
+            enable_aggregation=True,
+            aggregation_window=1.0,
+            aggregation_size=10
+        )
+
+        await self.message_engine.start()
+        logger.info("message_engine_initialized")
 
         logger.info("backend_starting", port=8001)
-        
+
         # We use uvicorn to run the FastAPI app
         import uvicorn
         from backend.api.server import app
-        
+
         config = uvicorn.Config(app, host="0.0.0.0", port=8001, log_level="debug")
         server = uvicorn.Server(config)
-        
+
         # We run the server in a separate task
         async def run_uvicorn():
             try:
@@ -131,55 +143,13 @@ class PulseApp(App):
                 
         asyncio.create_task(run_uvicorn())
 
-        # Wait for server to start before connecting the client
+        # Wait for server to start before marking as ready
         await asyncio.sleep(1)
+        logger.info("app_ready")
 
-        # Start the health check WS client loop in the background
-        asyncio.create_task(self.ws_client_loop())
-
-    async def ws_client_loop(self):
-        """Maintains a persistent WebSocket connection to the backend with exponential backoff."""
-        import websockets
-        import random
-        uri = "ws://localhost:8001/ws/events"
-
-        # Exponential backoff configuration
-        retry_count = 0
-        base_delay = 1  # Start at 1 second
-        max_delay = 30  # Max 30 seconds
-
-        while True:
-            logger.info("ws_client_connecting", uri=uri, attempt=retry_count+1)
-            self.log_backend_event(f"[INFO] Attempting to connect to backend at {uri}... (attempt {retry_count + 1})")
-            try:
-                async with websockets.connect(uri, ping_interval=10, ping_timeout=10, close_timeout=1) as websocket:
-                    logger.info("ws_client_connected")
-                    self.set_ws_status(True)
-                    self.log_backend_event("[SUCCESS] Connected to Backend WebSocket.")
-
-                    # Reset retry count on successful connection
-                    retry_count = 0
-
-                    # Listen for messages from server
-                    async for msg in websocket:
-                        # Handle server events
-                        logger.debug("ws_client_message", message=msg)
-                        await self.handle_ws_message(msg)
-            except Exception as e:
-                logger.error("ws_client_error", error=str(e), retry=retry_count)
-                self.log_backend_event(f"[ERROR] WS Connection failed: {e}")
-
-            self.set_ws_status(False)
-
-            # Calculate exponential backoff with jitter
-            delay = min(base_delay * (2 ** retry_count), max_delay)
-            jitter = random.uniform(-0.2, 0.2)  # ±20% jitter
-            delay_with_jitter = delay * (1 + jitter)
-
-            self.log_backend_event(f"[WARN] Retrying backend connection in {delay_with_jitter:.1f} seconds...")
-            await asyncio.sleep(delay_with_jitter)
-
-            retry_count += 1
+        # Set backend as connected (no need for WebSocket client loop)
+        self.set_ws_status(True)
+        self.log_backend_event("[SUCCESS] Backend server started on port 8001")
 
     def log_backend_event(self, msg: str):
         try:
@@ -257,84 +227,6 @@ class PulseApp(App):
             # Update health dashboard with new score
             self.update_health_dashboard(event.device_name, event.data)
 
-    async def handle_ws_message(self, msg: str):
-        """Handle WebSocket messages from backend."""
-        import json
-        try:
-            data = json.loads(msg)
-            msg_type = data.get("type")
-
-            if msg_type == "progress":
-                # Handle progress updates
-                log = self.query_one("#event-log", EventLog)
-                message = data.get("message", "")
-                device = data.get("device", "")
-                log.write_line(f"[PROGRESS] {device}: {message}")
-
-            elif msg_type == "connected":
-                # Handle device connected
-                log = self.query_one("#event-log", EventLog)
-                device = data.get("device", "")
-                log.write_line(f"[CONNECTED] {device}")
-                self.update_device_tree()
-
-            elif msg_type == "disconnected":
-                # Handle device disconnected
-                log = self.query_one("#event-log", EventLog)
-                device = data.get("device", "")
-                log.write_line(f"[DISCONNECTED] {device}")
-                self.update_device_tree()
-
-            elif msg_type == "error":
-                # Handle connection errors
-                log = self.query_one("#event-log", EventLog)
-                device = data.get("device", "")
-                attempt = data.get("attempt", 1)
-                log.write_line(f"[ERROR] {device}: Connection attempt {attempt} failed")
-
-            elif msg_type == "health_update":
-                # Update health dashboard
-                device = data.get("device")
-                event_data = data.get("data", {})
-                self.update_health_dashboard(device, event_data)
-
-                # Log to event log
-                log = self.query_one("#event-log", EventLog)
-                event_type = data.get("event_type", "health_update")
-                interface = event_data.get("interface", "unknown")
-                score_data = event_data.get("score", {})
-                score = score_data.get("score", 0) if score_data else 0
-                log.write_line(f"[{event_type}] {device}: {interface} - Score: {score:.0f}/100")
-
-            elif msg_type == "circuit_sick":
-                log = self.query_one("#event-log", EventLog)
-                device = data.get("device")
-                interface = data.get("interface", "unknown")
-                log.write_line(f"[WARNING] {device}: {interface} - Circuit degraded")
-                self.update_health_dashboard(device, data.get("score", {}))
-
-            elif msg_type == "circuit_dead":
-                log = self.query_one("#event-log", EventLog)
-                device = data.get("device")
-                interface = data.get("interface", "unknown")
-                log.write_line(f"[CRITICAL] {device}: {interface} - Circuit failed")
-                self.update_health_dashboard(device, data.get("score", {}))
-
-            elif msg_type == "spof_detected":
-                # Handle SPOF detection
-                log = self.query_one("#event-log", EventLog)
-                device = data.get("device", "")
-                log.write_line(f"[ALERT] SPOF DETECTED at {device}!")
-                alert = self.query_one("#spof-alert", SPOFAlertPanel)
-                alert.update(f"SPOF DETECTED AT {device.upper()}!")
-                alert.styles.background = "red"
-                alert.styles.visibility = "visible"
-
-        except json.JSONDecodeError:
-            logger.warning("ws_client_invalid_json", message=msg[:100])
-        except Exception as e:
-            logger.error("ws_client_handle_error", error=str(e))
-
     def update_health_dashboard(self, device: str, data: dict):
         """Update the health dashboard with new score data."""
         try:
@@ -369,15 +261,10 @@ class PulseApp(App):
             logger.error("dashboard_update_error", error=str(e))
 
     async def action_push_connection(self) -> None:
-        if not getattr(self, "ws_connected", False):
-            log = self.query_one("#event-log", EventLog)
-            log.write_line("[ERROR] Cannot connect: Wait for Backend WS to establish connection.")
-            return
-
         def handle_result(result):
             if result:
                 asyncio.create_task(self.connect_to_new_devices(result))
-        
+
         self.push_screen(ConnectionScreen(), handle_result)
 
     async def connect_to_new_devices(self, data: dict):
@@ -396,11 +283,6 @@ class PulseApp(App):
 
     async def action_disconnect_selected(self) -> None:
         """Action to disconnect the currently selected device in the tree."""
-        if not getattr(self, "ws_connected", False):
-            log = self.query_one("#event-log", EventLog)
-            log.write_line("[ERROR] Cannot disconnect: Backend WS is not connected.")
-            return
-
         tree = self.query_one("#device-tree", DeviceTree)
         if tree.cursor_node and tree.cursor_node.data:
             host = tree.cursor_node.data
@@ -417,6 +299,10 @@ class PulseApp(App):
     def action_push_device_management(self) -> None:
         """Action to push the device management screen."""
         self.push_screen("device_management")
+
+    def get_message_engine(self) -> Optional[Any]:
+        """Get the MessageEngine instance (if initialized)."""
+        return getattr(self, 'message_engine', None)
 
 if __name__ == "__main__":
     app = PulseApp()

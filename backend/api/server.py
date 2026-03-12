@@ -53,6 +53,24 @@ class ConnectionManagerWS:
 
 ws_manager = ConnectionManagerWS()
 
+
+async def start_websocket_server(ws_manager: ConnectionManagerWS, port: int = 8001):
+    """
+    Start the WebSocket server for event broadcasting.
+
+    Args:
+        ws_manager: WebSocket connection manager
+        port: WebSocket port to listen on
+
+    Note:
+        This is now managed by the MessageEngine - this function is kept for compatibility
+        but the MessageEngine handles the actual WebSocket lifecycle.
+    """
+    # The WebSocket endpoint is already defined below
+    # This function is now a no-op since MessageEngine manages the server
+    logger.info("websocket_server_managed_by_message_engine", port=port)
+
+
 @app.websocket("/ws/events")
 async def websocket_events(websocket: WebSocket):
     conn_id = await ws_manager.connect(websocket)

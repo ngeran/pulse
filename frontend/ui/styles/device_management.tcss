@@ -78,6 +78,7 @@ DeviceManagementFooter > Static {
 
 #dm-polling-panel {
     width: 40%;
+    height: 1fr;
 }
 
 /* Interface list specific styling - force pure black */
@@ -195,6 +196,15 @@ GroupHeader {
     height: 1fr;
     padding: 1 2;
     background: #000000;
+    text-style: none;
+    border: none;
+    outline: none;
+    overflow-y: auto;
+}
+
+#dm-polling-status * {
+    text-style: none;
+    border: none;
 }
 
 /* Activity log widget */
