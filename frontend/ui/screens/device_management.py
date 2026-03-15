@@ -5,7 +5,7 @@ Comprehensive device management interface with grouping, polling, and interface 
 """
 
 import asyncio
-from textual.widgets import Static, Button, Select, DataTable
+from textual.widgets import Static, Button, Select
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.app import ComposeResult
@@ -17,10 +17,11 @@ from frontend.ui.widgets.focus_panel import FocusPanel, FocusableStatic
 from frontend.ui.widgets.activity_log import ActivityLog
 from frontend.ui.widgets.device_list_widget import DeviceListWidget
 from textual.reactive import reactive
+from backend.utils.logging import logger
 
 
-class PollingPanel(FocusableStatic):
-    """Widget displaying polling status and controls."""
+class PollingAndControlsPanel(FocusableStatic):
+    """Combined widget displaying polling status and keyboard shortcuts."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -29,16 +30,16 @@ class PollingPanel(FocusableStatic):
         self.fiber_mode = "Both"  # Both, SM, MM
 
     def on_mount(self) -> None:
-        """Initialize the polling panel."""
+        """Initialize the polling and controls panel."""
         self.update_content()
 
     def update_content(self) -> None:
-        """Update the polling panel display."""
+        """Update the polling and controls panel display."""
         from rich.text import Text
 
-        # Create a Rich Text object
         content = Text()
 
+        # === POLLING SECTION ===
         # Status
         status_color = "green" if self.polling_enabled else "red"
         status_text = "ON" if self.polling_enabled else "OFF"
@@ -46,46 +47,45 @@ class PollingPanel(FocusableStatic):
         content.append(status_text + "\n", style=f"bold on {status_color}")
 
         # Interval
-        content.append("Interval: 5m\n\n", style="dim")
+        content.append("Interval: 5m\n", style="dim")
 
-        # Presets with colored brackets on one line
-        content.append("Presets: ", style="bold")
+        # Presets - more compact with separate styling
         content.append("[1]", style="bold #00d7ff")
-        content.append(" 1m, ", style="bold")
+        content.append("1m ", style="dim #888888")
         content.append("[2]", style="bold #00d7ff")
-        content.append(" 5m, ", style="bold")
+        content.append("5m ", style="dim #888888")
         content.append("[3]", style="bold #00d7ff")
-        content.append(" 10m, ", style="bold")
+        content.append("10m ", style="dim #888888")
         content.append("[4]", style="bold #00d7ff")
-        content.append(" 15m\n\n", style="bold")
+        content.append("15m\n", style="dim #888888")
 
-        # Fiber with bracketed SM and MM
-        content.append("Fiber: Both ", style="bold")
+        # Fiber - more compact
+        content.append("Fiber: ", style="bold")
         content.append("[SM]", style="bold #00d7ff")
         content.append(" ", style="bold")
         content.append("[MM]\n", style="bold #00d7ff")
-        content.append("─────────────────────────────────────\n\n", style="dim")
 
-        # Keyboard shortcuts with colored brackets
+        # Separator
+        content.append("─────────────\n", style="dim")
+
+        # === CONTROLS SECTION ===
+        # More compact format - blue keys, gray descriptions
         content.append("[p]", style="bold #00d7ff")
-        content.append(" Toggle polling on/off\n", style="dim")
-
+        content.append("Toggle\n", style="dim #888888")
         content.append("[f]", style="bold #00d7ff")
-        content.append(" Fetch now (one-shot)\n", style="dim")
-
+        content.append("Fetch\n", style="dim #888888")
         content.append("[s]", style="bold #00d7ff")
-        content.append(" Cycle fiber mode filter\n", style="dim")
-
+        content.append("Fiber\n", style="dim #888888")
         content.append("[r]", style="bold #00d7ff")
-        content.append(" Rescan SFP transceivers\n", style="dim")
-
+        content.append("Rescan\n", style="dim #888888")
         content.append("[c]", style="bold #00d7ff")
-        content.append(" Connect new device\n", style="dim")
-
+        content.append("Connect\n", style="dim #888888")
         content.append("[d]", style="bold #00d7ff")
-        content.append(" Disconnect", style="dim")
+        content.append("Disconnect\n", style="dim #888888")
+        content.append("[x]", style="bold #00d7ff")
+        content.append("Delete Failed\n", style="dim #888888")
 
-        # Update the widget with the Rich Text object
+        # Update the widget
         self.update(content)
 
     def toggle_polling(self) -> None:
@@ -110,8 +110,6 @@ class PollingPanel(FocusableStatic):
         if event.key == "p":
             self.toggle_polling()
             self.app.notify(f"Polling {'enabled' if self.polling_enabled else 'disabled'}", severity="information")
-        elif event.key == "f":
-            self.app.notify("Fetching data from all devices...", severity="information")
         elif event.key == "s":
             self.cycle_fiber_mode()
             self.app.notify(f"Fiber mode: {self.fiber_mode}", severity="information")
@@ -121,93 +119,9 @@ class PollingPanel(FocusableStatic):
             self.app.notify("Opening connection dialog...", severity="information")
         elif event.key == "d":
             self.app.notify("Disconnecting devices...", severity="warning")
-
-
-class InterfaceList(DataTable):
-    """Widget displaying interface information."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.cursor_type = "row"
-        self.zebra_stripes = False  # Disabled for pure black background
-
-    def on_mount(self) -> None:
-        """Initialize the interface table - empty initially."""
-        # Don't add columns initially - will be populated when data is fetched
-        self.border_subtitle = ""  # Clear any subtitle
-
-    def update_interfaces(self, interfaces: dict) -> None:
-        """Update the interface table with data."""
-        # Clear existing columns and rows
-        self.clear(columns=True)
-
-        if not interfaces:
-            self.update("No interfaces available")
-            return
-
-        # Add columns
-        self.add_columns("Interface", "Status", "RX Power", "TX Power", "Errors", "Flaps")
-
-        # Add rows
-        for intf_name, intf_data in interfaces.items():
-            status = intf_data.get("oper_status", "unknown")
-            rx_power = intf_data.get("optics", {}).get("rx_optical_power-dbm", "N/A")
-            tx_power = intf_data.get("optics", {}).get("laser_output_power-dbm", "N/A")
-            errors = intf_data.get("stats", {}).get("crc_errors", "0")
-            flaps = intf_data.get("stats", {}).get("flaps", "0")
-
-            # Color code status
-            status_color = {
-                "up": "#00ff00",
-                "down": "#ff0000",
-                "unknown": "#888888"
-            }.get(status.lower(), "#ffffff")
-
-            self.add_row(
-                f"[#ffffff]{intf_name}[/]",
-                f"[{status_color}]{status.upper()}[/]",
-                f"[#ffffff]{rx_power}[/]",
-                f"[#ffffff]{tx_power}[/]",
-                f"[#ffffff]{errors}[/]",
-                f"[#ffffff]{flaps}[/]"
-            )
-
-
-class DeviceDetails(FocusableStatic):
-    """Widget showing device details."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.current_data = {}
-
-    def update_details(self, data: dict) -> None:
-        """Update the device details."""
-        self.current_data = data
-
-        facts = data.get("facts", {})
-        interfaces = data.get("interfaces", {})
-
-        content = [
-            "[#0088ff]Device Information[/]",
-            f"Hostname: {facts.get('hostname', 'N/A')}",
-            f"Model: {facts.get('model', 'N/A')}",
-            f"Serial: {facts.get('serialnumber', 'N/A')}",
-            f"OS Version: {facts.get('version', 'N/A')}",
-            f"Uptime: {facts.get('uptime', 'N/A')}",
-            "",
-            f"[#0088ff]Interfaces ({len(interfaces)})[/]"
-        ]
-
-        for intf_name, intf_data in list(interfaces.items())[:10]:  # Show first 10
-            status = intf_data.get("oper_status", "unknown")
-            rx_power = intf_data.get("optics", {}).get("rx_optical_power-dbm", "N/A")
-            errors = intf_data.get("stats", {}).get("crc_errors", "0")
-            content.append(f"  {intf_name}: {status} | RX: {rx_power} | Errors: {errors}")
-
-        if len(interfaces) > 10:
-            content.append(f"  ... and {len(interfaces) - 10} more")
-
-        self.update("\n".join(content))
+        elif event.key == "x":
+            # Call the screen's action to delete failed sessions
+            self.app.action_delete_failed()
 
 
 class DeviceManagementScreen(Screen):
@@ -219,6 +133,9 @@ class DeviceManagementScreen(Screen):
     _TITLE_CSS = Path(__file__).parent.parent / "styles" / "title_field.tcss"
     _ACTIVITY_CSS = Path(__file__).parent.parent / "styles" / "activity_log.tcss"
     _DEVICE_LIST_CSS = Path(__file__).parent.parent / "styles" / "device_list_widget.tcss"
+    _FETCH_PANEL_CSS = Path(__file__).parent.parent / "styles" / "fetch_panel.tcss"
+    _MODULAR_FOOTER_CSS = Path(__file__).parent.parent / "styles" / "modular_footer.tcss"
+    _MODULAR_HEADER_CSS = Path(__file__).parent.parent / "styles" / "modular_header.tcss"
 
     CSS = ""
     if _PANELS_CSS.exists():
@@ -231,14 +148,21 @@ class DeviceManagementScreen(Screen):
         CSS += _ACTIVITY_CSS.read_text()
     if _DEVICE_LIST_CSS.exists():
         CSS += _DEVICE_LIST_CSS.read_text()
+    if _FETCH_PANEL_CSS.exists():
+        CSS += _FETCH_PANEL_CSS.read_text()
+    if _MODULAR_FOOTER_CSS.exists():
+        CSS += _MODULAR_FOOTER_CSS.read_text()
+    if _MODULAR_HEADER_CSS.exists():
+        CSS += _MODULAR_HEADER_CSS.read_text()
 
     BINDINGS = [
+        ("c", "connect_device", "Connect Device"),
         ("p", "toggle_polling", "Toggle Polling"),
         ("f", "fetch_now", "Fetch Now"),
         ("s", "cycle_fiber", "Cycle Fiber Mode"),
         ("r", "rescan_sfps", "Rescan SFPs"),
-        ("c", "connect_device", "Connect Device"),
-        ("d", "disconnect_devices", "Disconnect"),
+        ("d", "disconnect_selected", "Disconnect Selected"),
+        ("x", "delete_failed", "Delete Failed Sessions"),
     ]
 
     polling_interval = reactive("MANUAL")
@@ -250,27 +174,22 @@ class DeviceManagementScreen(Screen):
             # Header
             yield DeviceManagementHeader(id="dm-header")
 
-            # 2x2 Grid layout
+            # New 2x2 Grid layout with combined panel
             with Vertical(id="dm-main"):
-                # Top row: Sessions (left, wider) and Interfaces (right)
+                # Top row: Sessions (left, larger) and Polling & Controls (right)
                 with Horizontal(id="dm-top-row"):
-                    # Top left: Sessions (wider)
+                    # Top left: Sessions (larger - 70%)
                     with FocusPanel("Sessions", id="dm-sessions-panel"):
                         yield DeviceListWidget(id="dm-device-list")
 
-                    # Top right: Interfaces
-                    with FocusPanel("Interfaces", id="dm-interfaces-panel"):
-                        yield InterfaceList(id="dm-interface-list")
+                    # Top right: Polling & Controls (combined - 35%)
+                    with FocusPanel("Controls", id="dm-polling-controls-panel"):
+                        yield PollingAndControlsPanel(id="dm-polling-controls")
 
-                # Bottom row: Activity Log (left, wider) and Polling (right)
-                with Horizontal(id="dm-bottom-row"):
-                    # Bottom left: Activity Log (wider)
-                    with FocusPanel("Activity Log", id="dm-activity-panel"):
-                        yield ActivityLog(id="dm-activity-log")
-
-                    # Bottom right: Polling
-                    with FocusPanel("Polling", id="dm-polling-panel"):
-                        yield PollingPanel(id="dm-polling-status")
+            # Bottom: Activity Log (full width)
+            with Vertical(id="dm-bottom-row"):
+                with FocusPanel("Activity Log", id="dm-activity-panel"):
+                    yield ActivityLog(id="dm-activity-log")
 
             # Footer
             yield DeviceManagementFooter(id="dm-footer")
@@ -286,6 +205,20 @@ class DeviceManagementScreen(Screen):
         self.set_interval(1, self._update_header)
 
         # Device list and activity log widgets handle their own event subscriptions
+
+    def on_key(self, event) -> None:
+        """Handle key events at screen level for device list navigation."""
+        # Handle up/down for device list
+        if event.key == "up":
+            device_list = self.query_one("#dm-device-list", DeviceListWidget)
+            device_list.cursor_up()
+            device_list.focus()
+            event.stop()
+        elif event.key == "down":
+            device_list = self.query_one("#dm-device-list", DeviceListWidget)
+            device_list.cursor_down()
+            device_list.focus()
+            event.stop()
 
     def _update_header(self) -> None:
         """Update header with current device counts."""
@@ -305,19 +238,58 @@ class DeviceManagementScreen(Screen):
     def action_toggle_polling(self) -> None:
         """Toggle polling on/off."""
         try:
-            polling_panel = self.query_one("#dm-polling-status", PollingPanel)
+            polling_panel = self.query_one("#dm-polling-controls", PollingAndControlsPanel)
             polling_panel.toggle_polling()
         except Exception:
             pass
 
     def action_fetch_now(self) -> None:
-        """Fetch data from all devices now (one-shot)."""
-        self._fetch_all_devices()
+        """Open fetch results screen for selected device."""
+        logger.info("action_fetch_now_called")
+        print("[DEBUG] action_fetch_now called")
+
+        try:
+            # Get selected device
+            device_list = self.query_one("#dm-device-list", DeviceListWidget)
+            selected_device = device_list.get_selected_device()
+
+            if not selected_device:
+                self.notify("No device selected", severity="warning")
+                logger.warning("fetch_no_device_selected")
+                return
+
+            logger.info("fetch_device_selected", device=selected_device)
+
+            # Check if device is connected
+            if hasattr(self.app, 'conn_mgr') and self.app.conn_mgr:
+                session = self.app.conn_mgr.sessions.get(selected_device)
+                if not session or session.state.value != "CONNECTED":
+                    self.notify(f"Device {selected_device} is not connected", severity="warning")
+                    logger.warning("fetch_device_not_connected", device=selected_device)
+                    return
+
+            logger.info("fetch_device_connected", device=selected_device)
+
+            # Import and push the FetchResultsScreen
+            from frontend.ui.screens.fetch_results import FetchResultsScreen
+
+            fetch_screen = FetchResultsScreen(device=selected_device)
+            self.app.push_screen(fetch_screen)
+
+            logger.info("fetch_results_screen_pushed", device=selected_device)
+            print(f"[DEBUG] Pushed FetchResultsScreen for {selected_device}")
+
+        except Exception as e:
+            logger.error("fetch_set_device_error", error=str(e))
+            print(f"[ERROR] Failed to open fetch results: {e}")
+            import traceback
+            traceback.print_exc()
+            self.notify(f"Failed to open fetch results: {str(e)}", severity="error")
 
     def action_cycle_fiber(self) -> None:
         """Cycle fiber mode filter."""
         try:
-            polling_panel = self.query_one("#dm-polling-status", PollingPanel)
+            polling_panel = self.query_one("#dm-polling-controls", PollingAndControlsPanel)
             polling_panel.cycle_fiber_mode()
         except Exception:
             pass
@@ -329,8 +301,27 @@ class DeviceManagementScreen(Screen):
 
     def action_connect_device(self) -> None:
         """Open connection dialog."""
+        logger.info("action_connect_device_called")
+        print("[DEBUG] action_connect_device called")
+
         self.notify("Opening connection dialog...", severity="information")
-        self.app.push_screen("connection")
+
+        def handle_result(result):
+            logger.info("connection_form_result", result=result)
+            print(f"[DEBUG] Connection form result: {result}")
+
+            if result and hasattr(self.app, 'connect_to_new_devices'):
+                print(f"[DEBUG] Calling connect_to_new_devices with {result}")
+                asyncio.create_task(self.app.connect_to_new_devices(result))
+
+        try:
+            print("[DEBUG] Pushing connection screen via app")
+            screen = self.app.push_screen("connection", handle_result)
+            print(f"[DEBUG] Connection screen pushed, returned: {screen}")
+        except Exception as e:
+            logger.error("push_screen_error", error=str(e))
+            print(f"[ERROR] Failed to push screen: {e}")
+            self.notify(f"Failed to open connection dialog: {e}", severity="error")
 
     def action_disconnect_devices(self) -> None:
         """Disconnect all devices."""
@@ -349,6 +340,117 @@ class DeviceManagementScreen(Screen):
                 self.notify("No devices to disconnect", severity="warning")
         except Exception as e:
             self.notify(f"Disconnect failed: {str(e)}", severity="error")
+
+    def action_cursor_up(self) -> None:
+        """Move cursor up in device list."""
+        try:
+            device_list = self.query_one("#dm-device-list", DeviceListWidget)
+            device_list.cursor_up()
+            device_list.focus()
+        except Exception as e:
+            logger.error("cursor_up_error", error=str(e))
+
+    def action_cursor_down(self) -> None:
+        """Move cursor down in device list."""
+        try:
+            device_list = self.query_one("#dm-device-list", DeviceListWidget)
+            device_list.cursor_down()
+            device_list.focus()
+        except Exception as e:
+            logger.error("cursor_down_error", error=str(e))
+
+    def action_disconnect_selected(self) -> None:
+        """Disconnect the selected device."""
+        try:
+            device_list = self.query_one("#dm-device-list", DeviceListWidget)
+            selected_device = device_list.get_selected_device()
+
+            if not selected_device:
+                self.notify("No device selected", severity="warning")
+                logger.warning("disconnect_failed_no_device_selected")
+                return
+
+            logger.info("disconnecting_selected_device", device=selected_device)
+            print(f"[DEBUG] Disconnecting device: {selected_device}")
+
+            if hasattr(self.app, 'conn_mgr') and self.app.conn_mgr:
+                # Log to activity log
+                try:
+                    activity_log = self.query_one("#dm-activity-log", ActivityLog)
+                    activity_log.add_entry(f"Disconnecting {selected_device}...", "warning")
+                except Exception:
+                    pass
+
+                # Disconnect the device
+                asyncio.create_task(self.app.conn_mgr.disconnect_device(selected_device))
+                self.notify(f"Disconnecting {selected_device}...", severity="information")
+                logger.info("disconnect_initiated", device=selected_device)
+            else:
+                logger.error("disconnect_failed_conn_mgr_not_available")
+                self.notify("Connection manager not available", severity="error")
+        except Exception as e:
+            logger.error("disconnect_selected_error", error=str(e))
+            print(f"[ERROR] Disconnect failed: {e}")
+            import traceback
+            traceback.print_exc()
+            self.notify(f"Disconnect failed: {str(e)}", severity="error")
+
+    def action_delete_failed(self) -> None:
+        """Delete all failed/disconnected sessions."""
+        try:
+            if not hasattr(self.app, 'conn_mgr') or not self.app.conn_mgr:
+                self.notify("Connection manager not available", severity="error")
+                return
+
+            conn_mgr = self.app.conn_mgr
+            sessions = conn_mgr.sessions
+
+            # Find all failed or disconnected sessions
+            failed_devices = []
+            for host, session in sessions.items():
+                state = session.state.value if hasattr(session, 'state') else "UNKNOWN"
+                if state in ["FAILED", "DISCONNECTED"]:
+                    failed_devices.append(host)
+
+            if not failed_devices:
+                self.notify("No failed sessions to delete", severity="information")
+                logger.info("delete_failed_no_sessions")
+                return
+
+            logger.info("delete_failed_initiated", count=len(failed_devices), devices=failed_devices)
+
+            # Log to activity log
+            try:
+                activity_log = self.query_one("#dm-activity-log", ActivityLog)
+                activity_log.add_entry(f"Deleting {len(failed_devices)} failed session(s)...", "warning")
+            except Exception:
+                pass
+
+            # Delete all failed sessions
+            deleted_count = 0
+            for host in failed_devices:
+                try:
+                    del conn_mgr.sessions[host]
+                    deleted_count += 1
+                    logger.info("delete_failed_success", device=host)
+                except Exception as e:
+                    logger.error("delete_failed_device_error", device=host, error=str(e))
+
+            self.notify(f"Deleted {deleted_count} failed session(s)", severity="success")
+
+            # Refresh the device list
+            try:
+                device_list = self.query_one("#dm-device-list", DeviceListWidget)
+                device_list.refresh_devices()
+            except Exception:
+                pass
+
+        except Exception as e:
+            logger.error("delete_failed_error", error=str(e))
+            print(f"[ERROR] Delete failed: {e}")
+            import traceback
+            traceback.print_exc()
+            self.notify(f"Delete failed: {str(e)}", severity="error")
 
     async def _fetch_all_devices(self) -> None:
         """Fetch data from all connected devices."""

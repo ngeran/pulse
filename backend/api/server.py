@@ -1,12 +1,134 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi.responses import JSONResponse
 from typing import List, Dict, Any, Set, Optional
 import asyncio
 import json
 from backend.core.connection_engine import ConnectionManager
 from backend.core.events import ConnectionEvent, HealthEvent, EventMessage
+from backend.core.fetch_engine import FetchEngine
 from backend.utils.logging import logger
 
 app = FastAPI(title="Pulse API")
+
+# Global fetch engine (will be initialized after app startup)
+_fetch_engine: Optional[FetchEngine] = None
+
+
+def set_fetch_engine(fetch_engine: FetchEngine):
+    """Set the global fetch engine instance."""
+    global _fetch_engine
+    _fetch_engine = fetch_engine
+    logger.info("fetch_engine_registered")
+
+
+def get_fetch_engine() -> FetchEngine:
+    """Get the global fetch engine instance."""
+    if _fetch_engine is None:
+        raise HTTPException(status_code=503, detail="Fetch engine not initialized")
+    return _fetch_engine
+
+
+# ============================================================================
+# REST API Endpoints
+# ============================================================================
+
+@app.get("/")
+async def root():
+    """Root endpoint - API info."""
+    return {
+        "name": "Pulse API",
+        "version": "1.0.0",
+        "endpoints": {
+            "websocket": "/ws/events",
+            "fetch": "/api/devices/{host}/fetch/{type}",
+            "fetch_all": "/api/devices/{host}/fetch/all"
+        }
+    }
+
+
+@app.get("/api/devices/{host}/fetch/facts")
+async def fetch_facts(host: str):
+    """Fetch device facts (hostname, model, serial, OS version, uptime)."""
+    engine = get_fetch_engine()
+    result = await engine.fetch_facts(host)
+    return JSONResponse(content=result)
+
+
+@app.get("/api/devices/{host}/fetch/interfaces")
+async def fetch_interfaces(host: str):
+    """Fetch interface information (status, stats, optics)."""
+    engine = get_fetch_engine()
+    result = await engine.fetch_interfaces(host)
+    return JSONResponse(content=result)
+
+
+@app.get("/api/devices/{host}/fetch/routing")
+async def fetch_routing(host: str):
+    """Fetch routing table (IPv4 routes)."""
+    engine = get_fetch_engine()
+    result = await engine.fetch_routing_table(host)
+    return JSONResponse(content=result)
+
+
+@app.get("/api/devices/{host}/fetch/chassis")
+async def fetch_chassis(host: str):
+    """Fetch chassis hardware and inventory information."""
+    engine = get_fetch_engine()
+    result = await engine.fetch_chassis(host)
+    return JSONResponse(content=result)
+
+
+@app.get("/api/devices/{host}/fetch/ospf")
+async def fetch_ospf(host: str):
+    """Fetch OSPF neighbor information."""
+    engine = get_fetch_engine()
+    result = await engine.fetch_ospf(host)
+    return JSONResponse(content=result)
+
+
+@app.get("/api/devices/{host}/fetch/bgp")
+async def fetch_bgp(host: str):
+    """Fetch BGP neighbor information."""
+    engine = get_fetch_engine()
+    result = await engine.fetch_bgp(host)
+    return JSONResponse(content=result)
+
+
+@app.get("/api/devices/{host}/fetch/ldp")
+async def fetch_ldp(host: str):
+    """Fetch LDP neighbor and session information."""
+    engine = get_fetch_engine()
+    result = await engine.fetch_ldp(host)
+    return JSONResponse(content=result)
+
+
+@app.get("/api/devices/{host}/fetch/rsvp")
+async def fetch_rsvp(host: str):
+    """Fetch RSVP session information."""
+    engine = get_fetch_engine()
+    result = await engine.fetch_rsvp(host)
+    return JSONResponse(content=result)
+
+
+@app.get("/api/devices/{host}/fetch/optics")
+async def fetch_optics(host: str):
+    """Fetch optical diagnostics and transceiver information."""
+    engine = get_fetch_engine()
+    result = await engine.fetch_optics(host)
+    return JSONResponse(content=result)
+
+
+@app.get("/api/devices/{host}/fetch/all")
+async def fetch_all(host: str):
+    """Fetch all information types from a device."""
+    engine = get_fetch_engine()
+    result = await engine.fetch_all(host)
+    return JSONResponse(content=result)
+
+
+# ============================================================================
+# WebSocket Events
+# ============================================================================
 
 class ConnectionManagerWS:
     def __init__(self):

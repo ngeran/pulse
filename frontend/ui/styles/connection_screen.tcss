@@ -1,0 +1,78 @@
+/* Connection Screen Styles */
+/* ────────────────────────────────────────────────────────────────────────────── */
+
+ConnectionScreen {
+    align: center middle;
+    background: #000000;
+}
+
+#connection-panel {
+    width: 60;
+    height: auto;
+    border: solid #2a2a2a;
+    background: #000000;
+    padding: 1 2;
+}
+
+#title {
+    color: #4a4a4a;
+    text-style: bold;
+    text-align: center;
+    margin-top: 0;
+    background: #000000;
+}
+
+Label {
+    color: #888888;
+    margin-top: 1;
+    background: #000000;
+}
+
+/* Input fields - darker background */
+Input {
+    margin-bottom: 1;
+    border: solid #2a2a2a;
+    background: #0a0a0a;
+    color: #cccccc;
+}
+
+Input:focus {
+    border: solid #3a3a3a;
+    background: #0f0f0f;
+    color: #e0e0e0;
+}
+
+Input.-cursor {
+    background: #0a0a0a;
+    text-style: bold;
+}
+
+/* Button row */
+#button-row {
+    margin-top: 1;
+    align: center middle;
+    height: auto;
+    background: #000000;
+}
+
+/* Buttons */
+Button {
+    margin: 0 1;
+    background: #0a0a0a;
+    border: solid #2a2a2a;
+    color: #aaaaaa;
+    text-style: none;
+}
+
+Button:hover {
+    background: #1a1a1a;
+    border: solid #3a3a3a;
+    color: #cccccc;
+}
+
+Button:focus {
+    background: #1a1a1a;
+    border: solid #3a3a3a;
+    color: #cccccc;
+    text-style: bold;
+}

@@ -10,11 +10,13 @@ color-coded severity levels. Can be used across multiple screens.
 from typing import Optional, List
 from datetime import datetime
 from textual.widgets import Static
+from textual.containers import Vertical
 from textual.reactive import reactive
+from textual.app import ComposeResult
 from frontend.ui.mixins.event_subscriber import EventSubscriberMixin
 
 
-class ActivityLog(Static, EventSubscriberMixin):
+class ActivityLog(Vertical, EventSubscriberMixin):
     """
     Realtime activity log with timestamps and color-coded entries.
 
@@ -22,7 +24,7 @@ class ActivityLog(Static, EventSubscriberMixin):
     - Timestamps on all entries (HH:MM:SS format)
     - Single-line format for space efficiency
     - Color-coded by severity (info, success, warning, error)
-    - Auto-scroll to latest entry
+    - Scrollable to see all messages
     - Configurable max entries
     - Optional WebSocket event subscription
     - Auto-unsubscribe on unmount (via EventSubscriberMixin)
@@ -35,13 +37,6 @@ class ActivityLog(Static, EventSubscriberMixin):
         log.add_entry("Connected to device", "success")
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._max_entries = max_entries
-        self._show_timestamps = show_timestamps
-        self._auto_subscribe = auto_subscribe
-        self._entries: List[tuple] = []  # (timestamp, message, severity)
-
     # Log severity icons
     LOG_ICONS = {
         "info": "→",
@@ -50,12 +45,12 @@ class ActivityLog(Static, EventSubscriberMixin):
         "error": "✖",
     }
 
-    # Log colors
+    # Log colors (OLED-friendly dim colors)
     LOG_COLORS = {
-        "info": "#0088ff",      # Cyan/blue
-        "success": "#00ff00",   # Green
-        "warning": "#ffff00",   # Yellow
-        "error": "#ff0000",     # Red
+        "info": "#6a8a8a",      # Dim teal/cyan
+        "success": "#5aba5a",   # Dim green
+        "warning": "#ba8a5a",   # Dim orange/amber
+        "error": "#ba5a5a",     # Dim red
     }
 
     def __init__(
@@ -78,11 +73,30 @@ class ActivityLog(Static, EventSubscriberMixin):
         self._show_timestamps = show_timestamps
         self._auto_subscribe = auto_subscribe
         self._entries: List[tuple] = []  # (timestamp, message, severity)
+        self._static_widget: Optional[Static] = None
+
+    def compose(self) -> ComposeResult:
+        """Compose the activity log with a scrollable static widget."""
+        yield Static(id="activity-log-content")
+
+    def _get_static(self) -> Static:
+        """Get the inner static widget."""
+        if not self._static_widget:
+            try:
+                self._static_widget = self.query_one("#activity-log-content", Static)
+            except Exception:
+                # Widget not composed yet, return None
+                return None
+        return self._static_widget
+
+    def on_unmount(self) -> None:
+        """Clean up when unmounted."""
+        super().on_unmount()
+        self._static_widget = None
 
     async def on_mount(self) -> None:
         """Initialize the log and optionally subscribe to events."""
-        self._update_display()
-
+        # Don't update display yet - wait for compose to complete
         # Subscribe to backend events if requested
         if self._auto_subscribe:
             await self._subscribe_to_events()
@@ -115,7 +129,7 @@ class ActivityLog(Static, EventSubscriberMixin):
 
             # Map event types to log severity
             severity = "info"
-            message = event.message
+            message = ""
 
             if event.event_type == ConnectionEvent.CONNECTED:
                 severity = "success"
@@ -132,7 +146,7 @@ class ActivityLog(Static, EventSubscriberMixin):
                 severity = "info"
                 # Progress events have message in data
                 progress_msg = event.data.get("message", "") if event.data else ""
-                message = f"→ {event.device_name}: {progress_msg}" if progress_msg else event.message
+                message = f"→ {event.device_name}: {progress_msg}" if progress_msg else f"→ {event.device_name}: Progress"
             elif event.event_type == ConnectionEvent.ERROR:
                 severity = "error"
                 # Error events have message or attempt info in data
@@ -158,13 +172,20 @@ class ActivityLog(Static, EventSubscriberMixin):
             elif event.event_type == HealthEvent.SPOF_DETECTED:
                 severity = "error"
                 message = f"⚠ SPOF detected: {event.device_name}"
+            else:
+                # Default for unknown event types
+                severity = "info"
+                message = f"→ {event.device_name}: {event.event_type.value}"
 
             # Add entry from event
             self.add_entry(message, severity)
 
-        except Exception:
-            # If event parsing fails, just add as info
-            self.add_entry(str(event), "info")
+        except Exception as e:
+            # If event parsing fails, add a generic message instead of raw str(event)
+            import traceback
+            traceback.print_exc()  # For debugging
+            device = getattr(event, 'device_name', 'Unknown')
+            self.add_entry(f"→ {device}: Event logged (see logs for details)", "info")
 
     def add_entry(self, message: str, severity: str = "info", timestamp: Optional[str] = None) -> None:
         """
@@ -193,8 +214,13 @@ class ActivityLog(Static, EventSubscriberMixin):
 
     def _update_display(self) -> None:
         """Update the log display with all entries."""
+        static = self._get_static()
+
+        if not static:
+            return
+
         if not self._entries:
-            self.update("[dim]No activity yet[/]")
+            static.update("[dim]No activity yet[/]")
             return
 
         lines = []
@@ -211,7 +237,7 @@ class ActivityLog(Static, EventSubscriberMixin):
                     f"[{color}]{icon}[/{color}] {message}"
                 )
 
-        self.update("\n".join(lines))
+        static.update("\n".join(lines))
 
     def clear(self) -> None:
         """Clear all log entries."""
@@ -240,3 +266,10 @@ class ActivityLog(Static, EventSubscriberMixin):
             line = line.replace("[INFO]", "").strip()
 
         self.add_entry(line, severity)
+
+        # Scroll to bottom to show latest message
+        try:
+            static = self._get_static()
+            static.scroll_end(animate=False)
+        except Exception:
+            pass  # Scroll failed, not critical

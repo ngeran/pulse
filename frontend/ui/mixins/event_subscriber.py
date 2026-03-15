@@ -51,8 +51,8 @@ class EventSubscriberMixin:
         This method is called by Textual when the widget is removed from the screen.
         It automatically unsubscribes from any active backend event subscriptions.
         """
-        # Unsubscribe from connection events
-        if self._event_subscription_id and hasattr(self.app, 'conn_mgr'):
+        # Unsubscribe from connection events (if attribute exists and has value)
+        if hasattr(self, '_event_subscription_id') and self._event_subscription_id and hasattr(self.app, 'conn_mgr'):
             try:
                 # Create async task for unsubscribe
                 import asyncio
@@ -65,8 +65,8 @@ class EventSubscriberMixin:
                 from backend.utils.logging import logger
                 logger.warning("event_unsubscribe_error", widget=self.id, error=str(e))
 
-        # Unsubscribe from health events
-        if self._health_subscription_id and hasattr(self.app, 'health_engine'):
+        # Unsubscribe from health events (if attribute exists and has value)
+        if hasattr(self, '_health_subscription_id') and self._health_subscription_id and hasattr(self.app, 'health_engine'):
             try:
                 import asyncio
                 asyncio.create_task(

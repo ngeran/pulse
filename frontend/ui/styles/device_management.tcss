@@ -48,37 +48,32 @@ DeviceManagementFooter > Static {
     height: 100%;
 }
 
-/* Main content area */
+/* Main content area (top section with sessions + controls) */
 #dm-main {
-    height: 1fr;
+    height: 1fr;  /* Takes available space */
 }
 
-/* 2x2 Grid Layout */
-#dm-top-row, #dm-bottom-row {
-    height: 1fr;
+/* Bottom section (activity log) */
+#dm-bottom-row {
+    height: 35%;  /* Bottom section gets 35% of space */
+}
+
+/* Top row layout */
+#dm-top-row {
+    height: 100%;
 }
 
 /* Panel specific widths and borders */
 #dm-sessions-panel {
-    width: 60%;
+    width: 65%;
 }
 
-#dm-interfaces-panel {
-    width: 40%;
-    background: #000000 !important;
-}
-
-#dm-interfaces-panel > * {
-    background: #000000 !important;
+#dm-polling-controls-panel {
+    width: 35%;
 }
 
 #dm-activity-panel {
-    width: 60%;
-}
-
-#dm-polling-panel {
-    width: 40%;
-    height: 1fr;
+    width: 100%;  /* Full width for activity log */
 }
 
 /* Interface list specific styling - force pure black */
@@ -191,10 +186,10 @@ GroupHeader {
     background: #0088ff;
 }
 
-/* Polling status widget */
-#dm-polling-status {
+/* Polling & Controls widget */
+#dm-polling-controls {
     height: 1fr;
-    padding: 1 2;
+    padding: 1 1;  /* Reduced padding for better fit */
     background: #000000;
     text-style: none;
     border: none;
@@ -202,7 +197,7 @@ GroupHeader {
     overflow-y: auto;
 }
 
-#dm-polling-status * {
+#dm-polling-controls * {
     text-style: none;
     border: none;
 }

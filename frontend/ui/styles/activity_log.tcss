@@ -5,11 +5,19 @@ ActivityLog {
     width: 1fr;
     overflow-y: auto;
     border: none;
-    padding: 0 1;
+    padding: 0;
 }
 
 ActivityLog:focus {
     border: none;
+}
+
+/* Inner static content */
+ActivityLog Static {
+    background: #000000;
+    height: auto;
+    width: 100%;
+    padding: 0 1;
 }
 
 /* Scrollbar styling */
@@ -23,6 +31,10 @@ ActivityLog ScrollbarVertical > .vertical-scrollbar {
 
 ActivityLog ScrollbarVertical > .vertical-scrollbar-thumb {
     background: #0088ff;
+}
+
+ActivityLog ScrollbarVertical > .vertical-scrollbar-thumb:hover {
+    background: #00aaff;
 }
 
 /* Empty state */

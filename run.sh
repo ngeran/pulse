@@ -33,6 +33,15 @@ else
 fi
 echo ""
 
+# Check if --dev flag is passed
+DEV_MODE=""
+if echo "$@" | grep -q -- "--dev"; then
+    DEV_MODE="--dev"
+    echo "🔧 DEVELOPMENT MODE ENABLED"
+    echo "   CSS hot-reload is active - edit .tcss files to see changes instantly"
+    echo ""
+fi
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Launching Pulse App..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -41,12 +50,15 @@ echo "💡 TIP: Press 'q' to quit the application"
 echo "💡 TIP: Press 'c' to connect a device"
 echo "💡 TIP: Press 'h' to open the Health Dashboard"
 echo "💡 TIP: Press 'ctrl+p' to open the command palette"
+if [ -n "$DEV_MODE" ]; then
+    echo "💡 TIP: Edit .tcss files to see changes instantly"
+fi
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Run the app, showing errors in console but also logging to file
-python3 __main__.py 2>&1 | tee -a logs/crash.log
+# Run the app with any arguments passed to the script
+python3 __main__.py $@ 2>&1 | tee -a logs/crash.log
 EXIT_CODE=${?}
 
 echo ""

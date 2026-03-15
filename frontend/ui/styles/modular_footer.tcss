@@ -1,0 +1,33 @@
+/* Modular Footer Styles */
+/* ────────────────────────────────────────────────────────────────────────────── */
+
+ModularFooter, DeviceManagementFooter, PrismFooter {
+    height: 3;
+    background: #000000;
+    border-top: solid #000000;
+    padding: 0 1;
+    width: 1fr;
+}
+
+/* Footer sections - force black background and left alignment */
+#footer-left, #dm-footer-shortcuts, #prism-footer-shortcuts {
+    height: 100%;
+    text-align: left;
+    content-align: left middle;
+    background: #000000;
+}
+
+/* Footer right section - time/uptime */
+#footer-right, #dm-footer-time, #prism-footer-time {
+    height: 100%;
+    text-align: right;
+    content-align: right middle;
+    background: #000000;
+}
+
+/* Ensure all Static widgets in footer are black */
+ModularFooter > Static,
+DeviceManagementFooter > Static,
+PrismFooter > Static {
+    background: #000000;
+}

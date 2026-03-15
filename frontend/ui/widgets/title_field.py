@@ -36,6 +36,7 @@ class TitleField(Static):
             self.update("")
             return
 
-        # Render title with styled background
-        title_content = f"[#ffffff on #0088ff] {self._title} [/]"
+        # Render title with pure black OLED-friendly styling
+        # Dark gray background with dim white text
+        title_content = f"[#aaaaaa on #1a1a1a] {self._title} [/]"
         self.update(title_content)

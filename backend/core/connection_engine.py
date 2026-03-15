@@ -17,41 +17,73 @@ class ConnectionState(Enum):
 class DeviceSession:
     def __init__(self, host: str, user: str, password: Optional[str] = None, port: int = 22):
         self.host = host
-        self.dev = Device(host=host, user=user, password=password, port=port)
+        logger.info("device_session_creating", device=host, user=user, port=port)
+        # Create PyEZ Device with proper configuration
+        self.dev = Device(
+            host=host,
+            user=user,
+            password=password,
+            port=port,
+            gather_facts=False,  # Don't gather facts during connect (faster)
+            timeout=30,  # Connection timeout
+            ssh_config=None  # Don't use SSH config file
+        )
         self.state = ConnectionState.DISCONNECTED
         self.last_heartbeat: float = 0
         self.retry_count = 0
+        logger.info("device_session_created", device=host)
 
     async def connect(self, progress_callback: Optional[Callable[[str], Any]] = None) -> bool:
         self.state = ConnectionState.CONNECTING
         try:
             if progress_callback:
                 progress_callback("Initializing PyEZ Device")
-            
+                logger.info("device_connect_starting", device=self.host)
+
             # PyEZ connect is blocking, run in executor
             loop = asyncio.get_event_loop()
-            
+
             if progress_callback:
-                progress_callback("Opening NETCONF session (SSH)")
-                
+                progress_callback(f"Opening NETCONF session to {self.host}")
+
+            logger.info("device_connect_opening", device=self.host, user=self.dev.user)
             await loop.run_in_executor(None, self.dev.open)
-            
+
             if progress_callback:
                 progress_callback("Gathering device facts")
-            
-            self.state = ConnectionState.CONNECTED
-            self.last_heartbeat = time.time()
-            self.retry_count = 0
-            
-            if progress_callback:
-                progress_callback("Connected successfully")
-                
-            return True
-        except Exception as e:
-            logger.error("connection_failed", device=self.host, error=str(e))
+
+            # Verify connection
+            if self.dev.connected:
+                logger.info("device_connect_success", device=self.host)
+                self.state = ConnectionState.CONNECTED
+                self.last_heartbeat = time.time()
+                self.retry_count = 0
+
+                if progress_callback:
+                    progress_callback("Connected successfully")
+
+                return True
+            else:
+                logger.error("device_connect_not_connected", device=self.host)
+                raise Exception("Device.open() completed but dev.connected is False")
+
+        except ConnectError as e:
+            logger.error("device_connect_connect_error", device=self.host, error=str(e), error_type=type(e).__name__)
             self.state = ConnectionState.FAILED
             if progress_callback:
-                progress_callback(f"Connection failed: {str(e)}")
+                progress_callback(f"ConnectError: {str(e)}")
+            return False
+        except ProbeError as e:
+            logger.error("device_connect_probe_error", device=self.host, error=str(e), error_type=type(e).__name__)
+            self.state = ConnectionState.FAILED
+            if progress_callback:
+                progress_callback(f"ProbeError: Device not reachable - {str(e)}")
+            return False
+        except Exception as e:
+            logger.error("device_connect_exception", device=self.host, error=str(e), error_type=type(e).__name__)
+            self.state = ConnectionState.FAILED
+            if progress_callback:
+                progress_callback(f"Connection failed: {type(e).__name__}: {str(e)}")
             return False
 
     async def close(self):
@@ -220,14 +252,23 @@ class ConnectionManager:
 
     async def connect_device(self, host: str, user: str, password: Optional[str] = None):
         async with self._lock:
+            # If already connected, return existing session
             if host in self.sessions and self.sessions[host].state == ConnectionState.CONNECTED:
                 return self.sessions[host]
 
-            if len(self.sessions) >= self.max_sessions:
-                raise RuntimeError(f"Connection pool full (max {self.max_sessions})")
+            # Count only CONNECTED sessions towards limit
+            connected_count = sum(1 for s in self.sessions.values() if s.state == ConnectionState.CONNECTED)
+            if connected_count >= self.max_sessions:
+                raise RuntimeError(f"Connection pool full (max {self.max_sessions} connected)")
 
-            session = DeviceSession(host, user, password)
-            self.sessions[host] = session
+            # Create new session or reuse existing DISCONNECTED/FAILED session
+            if host in self.sessions:
+                # Reuse existing session object but reset it
+                session = self.sessions[host]
+                session.dev = Device(host=host, user=user, password=password, gather_facts=False, timeout=30, ssh_config=None)
+            else:
+                session = DeviceSession(host, user, password)
+                self.sessions[host] = session
 
         def report_progress(message: str):
             asyncio.create_task(self._emit_event(ConnectionEvent.PROGRESS, host, {"message": message}))
@@ -256,7 +297,7 @@ class ConnectionManager:
         return session
 
     async def disconnect_device(self, host: str):
-        """Gracefully disconnects a device and removes it from active sessions."""
+        """Gracefully disconnects a device and marks as disconnected."""
         async with self._lock:
             if host in self.sessions:
                 session = self.sessions[host]
@@ -268,7 +309,10 @@ class ConnectionManager:
                 except Exception as e:
                     logger.error("disconnect_error", error=str(e), device=host)
                 finally:
+                    # Mark as disconnected but keep in sessions for visibility
                     session.state = ConnectionState.DISCONNECTED
+
+                # Emit DISCONNECTED event so UI can update
                 await self._emit_event(ConnectionEvent.DISCONNECTED, host)
 
     async def start_heartbeat(self, interval: int = 30):

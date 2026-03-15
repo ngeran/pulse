@@ -1,4 +1,8 @@
-/* TitleField - Dynamic screen title widget */
+/*
+ * TitleField - Dynamic screen title widget
+ * Pure Black OLED Theme
+ */
+
 TitleField {
     background: #000000;
     height: 100%;
@@ -6,6 +10,7 @@ TitleField {
     align: left middle;
     border: none;
     padding: 0;
+    text-style: bold;
 }
 
 TitleField:focus {

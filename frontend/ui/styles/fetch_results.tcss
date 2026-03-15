@@ -1,0 +1,80 @@
+/* FetchResultsScreen - Screen for displaying fetched device data */
+
+FetchResultsScreen {
+    background: #000000;
+}
+
+#fetch-results-container {
+    height: 100%;
+    width: 100%;
+    padding: 1 2;
+}
+
+/* Device Header */
+#fetch-header {
+    background: #0a0a0a;
+    padding: 1 2;
+    border: solid #00d7ff;
+    border-title-align: left;
+    border-title-color: #00d7ff;
+    margin-bottom: 1;
+    height: auto;
+}
+
+/* Tab Buttons */
+#tab-buttons {
+    height: 3;
+    width: 100%;
+    background: #0a0a0a;
+    margin-bottom: 1;
+}
+
+#tab-buttons Button {
+    width: 1fr;
+    height: 1fr;
+    margin: 0 1;
+    min-width: 8;
+    text-style: bold;
+    background: #1a1a1a;
+    border: solid #444444;
+}
+
+#tab-buttons Button:hover {
+    background: #2a2a2a;
+    border: solid #00d7ff;
+}
+
+#tab-buttons Button.-primary {
+    background: #2a2a2a;
+    border: solid #00d7ff;
+    color: #00d7ff;
+    text-style: bold;
+}
+
+/* Data Views */
+#fetch-data-view {
+    height: 1fr;
+    width: 100%;
+    background: #000000;
+    padding: 1;
+    overflow: auto;
+    content-align: left top;
+    border: solid #333333;
+}
+
+/* Instructions */
+#fetch-instructions {
+    background: #0a0a0a;
+    padding: 1 2;
+    text-align: center;
+    color: #888888;
+    margin-top: 1;
+    border: round #333333;
+    height: auto;
+}
+
+FetchResultsFooter {
+    height: 1;
+    width: 100%;
+    background: #1a1a1a;
+}

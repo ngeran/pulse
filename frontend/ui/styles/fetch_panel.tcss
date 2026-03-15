@@ -1,0 +1,16 @@
+/* FetchPanel - Fetch options and results panel */
+FetchPanel {
+    background: #000000;
+    height: 100%;
+    width: 100%;
+    layout: vertical;
+    padding: 0;
+}
+
+#fetch-content {
+    height: 100%;
+    width: 100%;
+    background: #000000;
+    padding: 0 1;
+    content-align: left top;
+}

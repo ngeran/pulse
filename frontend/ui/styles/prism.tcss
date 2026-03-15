@@ -1,0 +1,330 @@
+/* PRISM Screen Styles */
+/* ────────────────────────────────────────────────────────────────────────────── */
+/* Combined CSS file for live reloading support in --dev mode */
+
+/* ============================================================================
+   IMPORTED: panels.tcss
+   ============================================================================ */
+
+FocusPanel {
+    background: #000000;
+    border: solid #3a3a3a;
+    padding: 0;
+    height: 100%;
+}
+
+FocusPanel > .border-title {
+    background: #000000;
+    color: #0088ff;
+    text-style: bold;
+    padding: 0 1;
+    height: 1;
+    border-bottom: solid #3a3a3a;
+}
+
+FocusPanel:focus {
+    border: solid #00d7ff !important;
+}
+
+FocusPanel:focus > .border-title {
+    background: #00d7ff !important;
+    color: #000000 !important;
+}
+
+FocusPanel > * {
+    background: #000000;
+    border: none;
+}
+
+FocusPanel:focus > * {
+    background: #000000 !important;
+    border: none !important;
+}
+
+FocusPanel:hover {
+    background: #050510;
+}
+
+FocusPanel.panel-orange > .border-title {
+    background: #000000;
+    color: #ff8800;
+    text-style: bold;
+    padding: 0 1;
+    height: 1;
+    border-bottom: solid #3a3a3a;
+}
+
+FocusPanel.panel-orange:focus > .border-title {
+    background: #ff8800 !important;
+    color: #000000 !important;
+}
+
+FocusPanel.panel-green > .border-title {
+    background: #000000;
+    color: #00ff00;
+    text-style: bold;
+    padding: 0 1;
+    height: 1;
+    border-bottom: solid #3a3a3a;
+}
+
+FocusPanel.panel-green:focus > .border-title {
+    background: #00ff00 !important;
+    color: #000000 !important;
+}
+
+FocusPanel.panel-red > .border-title {
+    background: #000000;
+    color: #ff0000;
+    text-style: bold;
+    padding: 0 1;
+    height: 1;
+    border-bottom: solid #3a3a3a;
+}
+
+FocusPanel.panel-red:focus > .border-title {
+    background: #ff0000 !important;
+    color: #000000 !important;
+}
+
+FocusPanel DataTable {
+    background: #000000 !important;
+    border: none !important;
+    outline: none !important;
+}
+
+FocusPanel DataTable > Header {
+    background: #000000 !important;
+    color: #ffffff !important;
+}
+
+FocusPanel DataTable > Header > HeaderCell {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border: solid #3a3a3a !important;
+}
+
+FocusPanel DataTable > DataRow {
+    background: #000000 !important;
+    border: none !important;
+}
+
+FocusPanel DataTable > DataRow.--zebra-row {
+    background: #000000 !important;
+}
+
+FocusPanel DataTable > DataRow:hover {
+    background: #1a1a1a !important;
+}
+
+FocusPanel DataTable > DataCell {
+    background: #000000 !important;
+    border: solid #3a3a3a !important;
+}
+
+/* ============================================================================
+   IMPORTED: modular_header.tcss
+   ============================================================================ */
+
+ModularHeader, DeviceManagementHeader, PrismHeader {
+    height: 3;
+    background: #000000;
+    border-bottom: solid #3a3a3a;
+    padding: 0 0;
+    margin-top: 1;
+    width: 1fr;
+    align: center middle;
+}
+
+#header-title, #dm-title, #prism-title {
+    width: auto;
+    content-align: left middle;
+}
+
+#header-status, #dm-status-fields, #prism-status-fields {
+    width: 1fr;
+    text-align: left;
+    content-align: left middle;
+}
+
+/* ============================================================================
+   IMPORTED: modular_footer.tcss
+   ============================================================================ */
+
+ModularFooter, DeviceManagementFooter, PrismFooter {
+    height: 3;
+    background: #000000;
+    border-top: solid #000000;
+    padding: 0 1;
+    width: 1fr;
+}
+
+#footer-left, #dm-footer-shortcuts, #prism-footer-shortcuts {
+    height: 100%;
+    text-align: left;
+    content-align: left middle;
+    background: #000000;
+}
+
+#footer-right, #dm-footer-time, #prism-footer-time {
+    height: 100%;
+    text-align: right;
+    content-align: right middle;
+    background: #000000;
+}
+
+ModularFooter > Static,
+DeviceManagementFooter > Static,
+PrismFooter > Static {
+    background: #000000;
+}
+
+/* ============================================================================
+   PRISM-SPECIFIC STYLES
+   ============================================================================ */
+
+PrismScreen {
+    background: #000000;
+    layout: vertical;
+}
+
+#prism-container {
+    height: 1fr;
+    width: 1fr;
+    padding: 0 1;
+}
+
+#prism-metrics {
+    height: 1fr;
+    width: 1fr;
+    padding: 1;
+}
+
+PrismMetricCard {
+    width: 1fr;
+    height: 1fr;
+    background: #000000;
+    border: solid #3a3a3a;
+    padding: 1;
+    text-align: center;
+    content-align: center middle;
+    margin-right: 1;
+}
+
+PrismMetricCard:last-child {
+    margin-right: 0;
+}
+
+PrismMetricCard#metric-loss {
+    border: solid #6a6a6a;
+}
+
+PrismMetricCard#metric-alerts {
+    border: solid #3a3a3a;
+}
+
+#prism-main {
+    height: 1fr;
+    width: 1fr;
+    margin-top: 1;
+}
+
+#prism-metrics-panel {
+    height: 11;
+    width: 1fr;
+    margin-top: 1;
+}
+
+#prism-probe-panel {
+    width: 2fr;
+    height: 1fr;
+    margin-right: 1;
+}
+
+#prism-history-panel {
+    width: 1fr;
+    height: 1fr;
+}
+
+#prism-alert-log-panel {
+    height: 18;
+    width: 1fr;
+    margin-top: 1;
+}
+
+#prism-probe-table {
+    width: 1fr;
+    height: 1fr;
+    background: #000000;
+    border: none;
+    padding: 0 1;
+}
+
+#prism-history {
+    width: 1fr;
+    height: 1fr;
+    background: #000000;
+    border: none;
+    padding: 1;
+}
+
+#prism-alert-log {
+    height: 1fr;
+    width: 1fr;
+    background: #000000;
+    border: none;
+    padding: 1;
+}
+
+#prism-header {
+    background: #000000;
+}
+
+.status-ok {
+    color: #639922;
+    text-style: bold;
+}
+
+.status-warn {
+    color: #EF9F27;
+    text-style: bold;
+}
+
+.status-crit {
+    color: #E24B4A;
+    text-style: bold;
+}
+
+FocusPanel {
+    border: solid #3a3a3a;
+}
+
+FocusPanel.panel-orange {
+    border: solid #3a3a3a;
+}
+
+FocusPanel.panel-orange:focus {
+    border: solid #ff8800 !important;
+}
+
+#prism-metrics-panel,
+#prism-probe-panel,
+#prism-history-panel,
+#prism-alert-log-panel {
+    border: solid #3a3a3a;
+}
+
+#prism-metrics-panel:focus,
+#prism-probe-panel:focus,
+#prism-history-panel:focus,
+#prism-alert-log-panel:focus {
+    border: solid #ff8800 !important;
+}
+
+FocusPanel.panel-orange:focus {
+    background: #000000 !important;
+}
+
+FocusPanel.panel-orange:focus > * {
+    background: #000000 !important;
+}

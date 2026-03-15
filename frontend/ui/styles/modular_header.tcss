@@ -1,0 +1,25 @@
+/* Modular Header Styles */
+/* ────────────────────────────────────────────────────────────────────────────── */
+
+ModularHeader, DeviceManagementHeader, PrismHeader {
+    height: 3;
+    background: #000000;
+    border-bottom: solid #3a3a3a;
+    padding: 0 0;
+    margin-top: 1;
+    width: 1fr;
+    align: center middle;
+}
+
+/* Title field */
+#header-title, #dm-title, #prism-title {
+    width: auto;
+    content-align: left middle;
+}
+
+/* Status field */
+#header-status, #dm-status-fields, #prism-status-fields {
+    width: 1fr;
+    text-align: left;
+    content-align: left middle;
+}
