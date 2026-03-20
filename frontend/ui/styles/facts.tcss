@@ -1,4 +1,4 @@
-/* PRISM Screen Styles */
+/* Facts Screen Styles */
 /* ────────────────────────────────────────────────────────────────────────────── */
 /* Combined CSS file for live reloading support in --dev mode */
 
@@ -63,7 +63,7 @@ FocusPanel.panel-orange:focus > .border-title {
    IMPORTED: modular_header.tcss
    ============================================================================ */
 
-ModularHeader, DeviceManagementHeader, PrismHeader {
+ModularHeader, DeviceManagementHeader, PrismHeader, FactsHeader {
     height: 3;
     background: #000000;
     border-bottom: solid #3a3a3a;
@@ -73,12 +73,12 @@ ModularHeader, DeviceManagementHeader, PrismHeader {
     align: center middle;
 }
 
-#header-title, #dm-title, #prism-title {
+#header-title, #dm-title, #prism-title, #facts-title {
     width: auto;
     content-align: left middle;
 }
 
-#header-status, #dm-status-fields, #prism-status-fields {
+#header-status, #dm-status-fields, #prism-status-fields, #facts-status-fields {
     width: 1fr;
     text-align: left;
     content-align: left middle;
@@ -88,7 +88,7 @@ ModularHeader, DeviceManagementHeader, PrismHeader {
    IMPORTED: modular_footer.tcss
    ============================================================================ */
 
-ModularFooter, DeviceManagementFooter, PrismFooter {
+ModularFooter, DeviceManagementFooter, PrismFooter, FactsFooter {
     height: 3;
     background: #000000;
     border-top: solid #000000;
@@ -96,14 +96,14 @@ ModularFooter, DeviceManagementFooter, PrismFooter {
     width: 1fr;
 }
 
-#footer-left, #dm-footer-shortcuts, #prism-footer-shortcuts {
+#footer-left, #dm-footer-shortcuts, #prism-footer-shortcuts, #facts-footer-shortcuts {
     height: 100%;
     text-align: left;
     content-align: left middle;
     background: #000000;
 }
 
-#footer-right, #dm-footer-time, #prism-footer-time {
+#footer-right, #dm-footer-time, #prism-footer-time, #facts-footer-time {
     height: 100%;
     text-align: right;
     content-align: right middle;
@@ -112,33 +112,63 @@ ModularFooter, DeviceManagementFooter, PrismFooter {
 
 ModularFooter > Static,
 DeviceManagementFooter > Static,
-PrismFooter > Static {
+PrismFooter > Static,
+FactsFooter > Static {
     background: #000000;
 }
 
 /* ============================================================================
-   PRISM-SPECIFIC STYLES
+   FACTS-SPECIFIC STYLES
    ============================================================================ */
 
-PrismScreen {
+FactsScreen {
     background: #000000;
     layout: vertical;
 }
 
-#prism-container {
+#facts-container {
     height: 1fr;
     width: 1fr;
     padding: 0 1;
 }
 
-/* Device selector panel */
-#prism-device-panel {
-    height: 4;
+/* Sessions panel */
+#facts-sessions-panel {
+    height: 12;
     width: 1fr;
     margin-top: 1;
 }
 
-#prism-device-selector {
+/* Info panels row */
+#facts-info-panels {
+    height: 1fr;
+    width: 1fr;
+    margin-top: 1;
+}
+
+/* Individual info panels */
+#facts-system-panel,
+#facts-config-panel {
+    width: 1fr;
+    height: 1fr;
+}
+
+#facts-config-panel {
+    margin-left: 1;
+}
+
+/* Stats panel */
+#facts-stats-panel {
+    height: 15;
+    width: 1fr;
+    margin-top: 1;
+}
+
+/* Inner widgets */
+#facts-sessions-table,
+#facts-system-info,
+#facts-config-info,
+#facts-stats-info {
     width: 1fr;
     height: 1fr;
     background: #000000;
@@ -146,58 +176,7 @@ PrismScreen {
     padding: 1;
 }
 
-/* Main content row */
-#prism-main {
-    height: 1fr;
-    width: 1fr;
-    margin-top: 1;
-}
-
-/* Probe table panel */
-#prism-probe-panel {
-    width: 2fr;
-    height: 1fr;
-    margin-right: 1;
-}
-
-#prism-probe-table {
-    width: 1fr;
-    height: 1fr;
-    background: #000000;
-    border: none;
-    padding: 0 1;
-}
-
-/* Details panel */
-#prism-details-panel {
-    width: 1fr;
-    height: 1fr;
-}
-
-#prism-details {
-    width: 1fr;
-    height: 1fr;
-    background: #000000;
-    border: none;
-    padding: 1;
-}
-
-/* TWAMP data panel */
-#prism-twamp-panel {
-    height: 18;
-    width: 1fr;
-    margin-top: 1;
-}
-
-#prism-twamp-data {
-    height: 1fr;
-    width: 1fr;
-    background: #000000;
-    border: none;
-    padding: 1;
-}
-
-#prism-header {
+#facts-header {
     background: #000000;
 }
 
@@ -214,10 +193,10 @@ FocusPanel.panel-orange:focus {
     border: solid #ff8800 !important;
 }
 
-#prism-device-panel:focus,
-#prism-probe-panel:focus,
-#prism-details-panel:focus,
-#prism-twamp-panel:focus {
+#facts-sessions-panel:focus,
+#facts-system-panel:focus,
+#facts-config-panel:focus,
+#facts-stats-panel:focus {
     border: solid #ff8800 !important;
 }
 

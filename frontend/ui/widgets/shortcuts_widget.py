@@ -16,7 +16,7 @@ class GlobalShortcutsWidget(Static):
     """
     Widget displaying global navigation shortcuts.
 
-    Shows: [b] dashboard │ [m] device management │ [p] prism │ [h] help │ [q] quit
+    Shows: [b] dashboard │ [f] facts │ [m] device management │ [p] prism │ [h] help │ [q] quit
     Can be extended with screen-specific shortcuts (shown in blue with [x]).
     """
 
@@ -25,6 +25,7 @@ class GlobalShortcutsWidget(Static):
         # Core global shortcuts
         self._shortcuts = [
             ("b", "dashboard"),
+            ("f", "facts"),
             ("m", "device management"),
             ("p", "prism"),
             ("h", "help"),

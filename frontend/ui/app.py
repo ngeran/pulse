@@ -11,6 +11,7 @@ from frontend.ui.screens.device_management import DeviceManagementScreen
 from frontend.ui.screens.dashboard import DashboardScreen
 from frontend.ui.screens.fetch_results import FetchResultsScreen
 from frontend.ui.screens.prism import PrismScreen
+from frontend.ui.screens.facts import FactsScreen
 from frontend.ui.screens.help_screen import HelpScreen
 import asyncio
 from typing import Optional, Any
@@ -20,6 +21,7 @@ class PulseApp(App):
 
     BINDINGS = [
         ("b", "push_dashboard", "Dashboard"),
+        ("f", "push_facts", "Facts"),
         ("h", "show_help", "Help"),
         ("m", "push_device_management", "Device Management"),
         ("p", "push_prism", "PRISM"),
@@ -56,6 +58,7 @@ class PulseApp(App):
         self.install_screen(DashboardScreen(), name="dashboard")
         self.install_screen(DeviceManagementScreen(), name="device_management")
         self.install_screen(PrismScreen(), name="prism")
+        self.install_screen(FactsScreen(), name="facts")
         self.install_screen(HelpScreen(), name="help")
         # FetchResultsScreen doesn't need to be pre-installed, it's created dynamically
         # Enable console logging for visibility
@@ -181,6 +184,10 @@ class PulseApp(App):
     def action_push_dashboard(self) -> None:
         """Action to push the dashboard screen."""
         self.push_screen("dashboard")
+
+    def action_push_facts(self) -> None:
+        """Action to push the Facts screen."""
+        self.push_screen("facts")
 
     def action_push_prism(self) -> None:
         """Action to push the PRISM screen."""

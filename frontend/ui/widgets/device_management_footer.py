@@ -13,7 +13,7 @@ class DeviceManagementFooter(ModularFooter):
     """
     Device management footer with global and screen-specific shortcuts.
 
-    Global: [b] dashboard │ [m] device management │ [p] prism │ [h] help │ [q] quit
+    Global: [b] dashboard │ [f] facts │ [m] device management │ [p] prism │ [h] help │ [q] quit
     Extra (device-specific): [x] delete (shown in blue)
     """
 

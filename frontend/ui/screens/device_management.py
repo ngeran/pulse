@@ -23,11 +23,24 @@ from backend.utils.logging import logger
 class PollingAndControlsPanel(FocusableStatic):
     """Combined widget displaying polling status and keyboard shortcuts."""
 
+    # Interval mapping
+    INTERVALS = {
+        "1": ("1m", 60),
+        "2": ("5m", 300),
+        "3": ("10m", 600),
+        "4": ("15m", 900),
+    }
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.polling_enabled = False
-        self.polling_interval = "5m"
+        self.current_interval_key = "2"  # Default to 5m
         self.fiber_mode = "Both"  # Both, SM, MM
+        self._screen = None  # Reference to screen for activity log access
+
+    def set_screen(self, screen) -> None:
+        """Set reference to parent screen for activity log access."""
+        self._screen = screen
 
     def on_mount(self) -> None:
         """Initialize the polling and controls panel."""
@@ -46,18 +59,21 @@ class PollingAndControlsPanel(FocusableStatic):
         content.append("STATUS: ", style="bold")
         content.append(status_text + "\n", style=f"bold on {status_color}")
 
-        # Interval
-        content.append("Interval: 5m\n", style="dim")
+        # Interval - show current interval highlighted
+        interval_display = self.INTERVALS.get(self.current_interval_key, ("5m", 300))[0]
+        content.append(f"Interval: {interval_display}\n", style="bold")
 
-        # Presets - more compact with separate styling
-        content.append("[1]", style="bold #00d7ff")
-        content.append("1m ", style="dim #888888")
-        content.append("[2]", style="bold #00d7ff")
-        content.append("5m ", style="dim #888888")
-        content.append("[3]", style="bold #00d7ff")
-        content.append("10m ", style="dim #888888")
-        content.append("[4]", style="bold #00d7ff")
-        content.append("15m\n", style="dim #888888")
+        # Presets - highlight current selection
+        for key in ["1", "2", "3", "4"]:
+            interval_name, _ = self.INTERVALS[key]
+            if key == self.current_interval_key:
+                # Highlight current selection
+                content.append(f"[{key}]", style="bold #ff8800 on #3a2a00")
+                content.append(f"{interval_name} ", style="bold #ff8800")
+            else:
+                content.append(f"[{key}]", style="bold #00d7ff")
+                content.append(f"{interval_name} ", style="dim #888888")
+        content.append("\n")
 
         # Fiber - more compact
         content.append("Fiber: ", style="bold")
@@ -72,8 +88,56 @@ class PollingAndControlsPanel(FocusableStatic):
         # More compact format - blue keys, gray descriptions
         content.append("[p]", style="bold #00d7ff")
         content.append("Toggle\n", style="dim #888888")
-        content.append("[f]", style="bold #00d7ff")
-        content.append("Fetch\n", style="dim #888888")
+        content.append("[g]", style="bold #00d7ff")
+        content.append("Get Data\n", style="dim #888888")
+        content.append("[s]", style="bold #00d7ff")
+        content.append("Fiber\n", style="dim #888888")
+        content.append("[r]", style="bold #00d7ff")
+        content.append("Rescan\n", style="dim #888888")
+        content.append("[c]", style="bold #00d7ff")
+        content.append("Connect\n", style="dim #888888")
+        content.append("[d]", style="bold #00d7ff")
+        content.append("Disconnect\n", style="dim #888888")
+        content.append("[x]", style="bold #00d7ff")
+        content.append("Delete Failed\n", style="dim #888888")
+
+        # Update the widget
+        self.update(content)
+
+    def toggle_polling(self) -> None:
+        """Toggle polling on/off."""
+        self.polling_enabled = not self.polling_enabled
+        self.update_content()
+
+    def set_interval(self, interval_key: str) -> None:
+        """Set polling interval by key (1-4)."""
+        if interval_key in self.INTERVALS:
+            self.current_interval_key = interval_key
+            self.update_content()
+
+    def get_interval_seconds(self) -> int:
+        """Get current interval in seconds."""
+        return self.INTERVALS.get(self.current_interval_key, (None, 300))[1]
+
+    def get_interval_name(self) -> str:
+        """Get current interval name (e.g., '5m')."""
+        return self.INTERVALS.get(self.current_interval_key, (None, "5m"))[0]
+
+        # Fiber - more compact
+        content.append("Fiber: ", style="bold")
+        content.append("[SM]", style="bold #00d7ff")
+        content.append(" ", style="bold")
+        content.append("[MM]\n", style="bold #00d7ff")
+
+        # Separator
+        content.append("─────────────\n", style="dim")
+
+        # === CONTROLS SECTION ===
+        # More compact format - blue keys, gray descriptions
+        content.append("[p]", style="bold #00d7ff")
+        content.append("Toggle\n", style="dim #888888")
+        content.append("[g]", style="bold #00d7ff")
+        content.append("Get Data\n", style="dim #888888")
         content.append("[s]", style="bold #00d7ff")
         content.append("Fiber\n", style="dim #888888")
         content.append("[r]", style="bold #00d7ff")
@@ -158,7 +222,11 @@ class DeviceManagementScreen(Screen):
     BINDINGS = [
         ("c", "connect_device", "Connect Device"),
         ("p", "toggle_polling", "Toggle Polling"),
-        ("f", "fetch_now", "Fetch Now"),
+        ("1", "set_interval_1", "Interval 1m"),
+        ("2", "set_interval_2", "Interval 5m"),
+        ("3", "set_interval_3", "Interval 10m"),
+        ("4", "set_interval_4", "Interval 15m"),
+        ("g", "fetch_now", "Get Device Data"),
         ("s", "cycle_fiber", "Cycle Fiber Mode"),
         ("r", "rescan_sfps", "Rescan SFPs"),
         ("d", "disconnect_selected", "Disconnect Selected"),
@@ -201,6 +269,13 @@ class DeviceManagementScreen(Screen):
         if not self.device_manager:
             self.notify("Device manager not available", severity="error")
 
+        # Set screen reference in polling panel
+        try:
+            polling_panel = self.query_one("#dm-polling-controls", PollingAndControlsPanel)
+            polling_panel.set_screen(self)
+        except Exception:
+            pass
+
         # Start polling updates
         self.set_interval(1, self._update_header)
 
@@ -219,6 +294,7 @@ class DeviceManagementScreen(Screen):
             device_list.cursor_down()
             device_list.focus()
             event.stop()
+        # Don't stop other events - let them propagate to action handlers
 
     def _update_header(self) -> None:
         """Update header with current device counts."""
@@ -239,9 +315,95 @@ class DeviceManagementScreen(Screen):
         """Toggle polling on/off."""
         try:
             polling_panel = self.query_one("#dm-polling-controls", PollingAndControlsPanel)
+            was_enabled = polling_panel.polling_enabled
             polling_panel.toggle_polling()
-        except Exception:
-            pass
+
+            # Log to activity log
+            try:
+                activity_log = self.query_one("#dm-activity-log", ActivityLog)
+                if not was_enabled and polling_panel.polling_enabled:
+                    interval = polling_panel.get_interval_name()
+                    activity_log.add_entry(f"Polling ENABLED (Interval: {interval})", "success")
+                elif was_enabled and not polling_panel.polling_enabled:
+                    activity_log.add_entry("Polling DISABLED", "warning")
+            except Exception:
+                pass
+
+            # Update device manager polling
+            if self.device_manager:
+                if polling_panel.polling_enabled:
+                    from backend.core.device_manager import PollingInterval
+                    interval_seconds = polling_panel.get_interval_seconds()
+                    # Map seconds to PollingInterval enum
+                    interval_map = {
+                        60: PollingInterval.ONE_MIN,
+                        300: PollingInterval.FIVE_MIN,
+                        600: PollingInterval.TEN_MIN,
+                        900: PollingInterval.FIFTEEN_MIN,
+                    }
+                    interval = interval_map.get(interval_seconds, PollingInterval.FIVE_MIN)
+                    asyncio.create_task(self.device_manager.set_polling_interval(interval))
+                else:
+                    asyncio.create_task(self.device_manager.set_polling_interval(PollingInterval.MANUAL))
+
+        except Exception as e:
+            logger.error("toggle_polling_error", error=str(e))
+
+    def action_set_interval_1(self) -> None:
+        """Set polling interval to 1 minute."""
+        print("[DEBUG] action_set_interval_1 called")
+        self._set_interval_key("1")
+
+    def action_set_interval_2(self) -> None:
+        """Set polling interval to 5 minutes."""
+        print("[DEBUG] action_set_interval_2 called")
+        self._set_interval_key("2")
+
+    def action_set_interval_3(self) -> None:
+        """Set polling interval to 10 minutes."""
+        print("[DEBUG] action_set_interval_3 called")
+        self._set_interval_key("3")
+
+    def action_set_interval_4(self) -> None:
+        """Set polling interval to 15 minutes."""
+        print("[DEBUG] action_set_interval_4 called")
+        self._set_interval_key("4")
+
+    def _set_interval_key(self, key: str) -> None:
+        """Set polling interval by key."""
+        try:
+            print(f"[DEBUG] _set_interval_key called with key: {key}")
+            polling_panel = self.query_one("#dm-polling-controls", PollingAndControlsPanel)
+            print(f"[DEBUG] Current interval_key before: {polling_panel.current_interval_key}")
+            old_interval = polling_panel.get_interval_name()
+            polling_panel.set_interval(key)
+            print(f"[DEBUG] Current interval_key after: {polling_panel.current_interval_key}")
+            new_interval = polling_panel.get_interval_name()
+            print(f"[DEBUG] Interval change: {old_interval} → {new_interval}")
+
+            # Log to activity log
+            try:
+                activity_log = self.query_one("#dm-activity-log", ActivityLog)
+                activity_log.add_entry(f"Polling interval changed: {old_interval} → {new_interval}", "info")
+            except Exception:
+                pass
+
+            # Update device manager if polling is enabled
+            if polling_panel.polling_enabled and self.device_manager:
+                from backend.core.device_manager import PollingInterval
+                interval_seconds = polling_panel.get_interval_seconds()
+                interval_map = {
+                    60: PollingInterval.ONE_MIN,
+                    300: PollingInterval.FIVE_MIN,
+                    600: PollingInterval.TEN_MIN,
+                    900: PollingInterval.FIFTEEN_MIN,
+                }
+                interval = interval_map.get(interval_seconds, PollingInterval.FIVE_MIN)
+                asyncio.create_task(self.device_manager.set_polling_interval(interval))
+
+        except Exception as e:
+            logger.error("set_interval_error", error=str(e))
+            print(f"[ERROR] set_interval_error: {e}")
 
     def action_fetch_now(self) -> None:
         """Open fetch results screen for selected device."""
@@ -485,35 +647,6 @@ class DeviceManagementScreen(Screen):
             except Exception as e:
                 self.notify(f"Fetch failed: {str(e)}", severity="error")
                 activity_log.write_line(f"[ERROR] Fetch failed: {str(e)}")
-        except Exception:
-            pass
-
-    def _set_polling_interval(self, interval: str) -> None:
-        """Set the polling interval."""
-        if not self.device_manager:
-            return
-
-        # Convert string to PollingInterval
-        from backend.core.device_manager import PollingInterval
-
-        interval_map = {
-            "MANUAL": PollingInterval.MANUAL,
-            "1m": PollingInterval.ONE_MIN,
-            "3m": PollingInterval.THREE_MIN,
-            "5m": PollingInterval.FIVE_MIN,
-            "10m": PollingInterval.TEN_MIN,
-            "15m": PollingInterval.FIFTEEN_MIN
-        }
-
-        polling_interval = interval_map.get(interval, PollingInterval.MANUAL)
-
-        asyncio.create_task(self.device_manager.set_polling_interval(polling_interval))
-        self.notify(f"Polling set to {interval}", severity="information")
-
-        # Update polling status display
-        try:
-            polling_status = self.query_one("#dm-polling-status", Static)
-            polling_status.update(f"Polling Status: {interval}\n\nLast Poll: In progress...\nPolls: 0")
         except Exception:
             pass
 

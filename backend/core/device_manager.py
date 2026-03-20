@@ -10,7 +10,8 @@ from typing import Dict, List, Optional, Callable, Any, Set
 from enum import Enum
 from datetime import datetime, timedelta
 from backend.core.connection_engine import ConnectionManager, DeviceSession, ConnectionState
-from backend.core.events import ConnectionEvent, EventMessage
+from backend.core.events import ConnectionEvent, EventMessage, HealthEvent
+from backend.core.twamp_engine import TWAMPEngine
 from backend.utils.logging import logger
 
 
@@ -77,6 +78,9 @@ class DeviceManager:
             "failed_polls": 0,
             "last_poll_duration": 0.0
         }
+        self.twamp_engine = TWAMPEngine()
+        self._twamp_data: Dict[str, List[Any]] = {}  # Store TWAMP data per device
+        self._twamp_subscribers: List[Callable] = []  # Subscribers for TWAMP updates
 
     def create_group(self, name: str, description: str = "") -> DeviceGroup:
         """Create a new device group."""
@@ -217,6 +221,9 @@ class DeviceManager:
                 results["failed"].append(host)
                 self._polling_stats["failed_polls"] += 1
 
+        # Fetch TWAMP data from all connected devices
+        await self._poll_twamp_data()
+
         # Calculate poll duration
         duration = (datetime.now() - poll_start).total_seconds()
         self._polling_stats["last_poll_duration"] = duration
@@ -318,6 +325,71 @@ class DeviceManager:
             logger.debug("stats_extract_failed", error=str(e))
 
         return stats
+
+    async def _poll_twamp_data(self) -> None:
+        """Poll TWAMP data from all connected devices."""
+        print("[DEBUG] _poll_twamp_data called")
+        self._twamp_data = {}
+
+        for host, session in self.conn_mgr.sessions.items():
+            if session.state != ConnectionState.CONNECTED:
+                print(f"[DEBUG] Skipping {host} - not connected")
+                continue
+
+            try:
+                print(f"[DEBUG] Fetching TWAMP from {host}")
+                # Fetch TWAMP data using the TWAMP engine
+                twamp_metrics = await self.twamp_engine.fetch_twamp_data(session)
+
+                if twamp_metrics:
+                    self._twamp_data[host] = twamp_metrics
+                    print(f"[DEBUG] Got {len(twamp_metrics)} metrics from {host}")
+                    logger.info("twamp_data_fetched", device=host, probe_count=len(twamp_metrics))
+
+                    # Notify subscribers about TWAMP updates
+                    await self._notify_twamp_subscribers(host, twamp_metrics)
+                else:
+                    print(f"[DEBUG] No TWAMP metrics returned from {host}")
+
+            except Exception as e:
+                print(f"[ERROR] Failed to poll TWAMP from {host}: {e}")
+                logger.error("twamp_poll_failed", device=host, error=str(e))
+
+        print(f"[DEBUG] _poll_twamp_data complete. _twamp_data keys: {list(self._twamp_data.keys())}")
+
+    async def _notify_twamp_subscribers(self, host: str, twamp_metrics: List[Any]) -> None:
+        """Notify subscribers about TWAMP data updates."""
+        for callback in self._twamp_subscribers:
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(host, twamp_metrics)
+                else:
+                    callback(host, twamp_metrics)
+            except Exception as e:
+                logger.error("twamp_subscriber_error", error=str(e))
+
+    def subscribe_to_twamp_updates(self, callback: Callable[[str, List[Any]], Any]) -> None:
+        """Subscribe to TWAMP data updates."""
+        if callback not in self._twamp_subscribers:
+            self._twamp_subscribers.append(callback)
+
+    def unsubscribe_from_twamp_updates(self, callback: Callable[[str, List[Any]], Any]) -> None:
+        """Unsubscribe from TWAMP data updates."""
+        if callback in self._twamp_subscribers:
+            self._twamp_subscribers.remove(callback)
+
+    def get_twamp_data(self, host: Optional[str] = None) -> Dict[str, List[Any]]:
+        """Get TWAMP data for a specific host or all hosts."""
+        if host:
+            return self._twamp_data.get(host, [])
+        return self._twamp_data
+
+    def get_all_twamp_metrics(self) -> List[Any]:
+        """Get all TWAMP metrics from all devices as a flat list."""
+        all_metrics = []
+        for metrics_list in self._twamp_data.values():
+            all_metrics.extend(metrics_list)
+        return all_metrics
 
     async def fetch_device_data(self, host: str) -> Optional[Dict[str, Any]]:
         """Fetch data for a single device."""

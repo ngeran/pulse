@@ -13,7 +13,7 @@ class PrismFooter(ModularFooter):
     """
     PRISM footer with global shortcuts and panel/probe navigation.
 
-    Global: [b] dashboard │ [m] device management │ [p] prism │ [h] help │ [q] quit
+    Global: [b] dashboard │ [f] facts │ [m] device management │ [p] prism │ [h] help │ [q] quit
     Extra: [tab] panels │ [up/down] navigate │ [enter] details
     """
 
@@ -21,7 +21,7 @@ class PrismFooter(ModularFooter):
         # Add panel and probe table navigation shortcuts
         extra_shortcuts = [
             ("tab", "panels"),
+            ("left/right", "device"),
             ("up/down", "navigate"),
-            ("enter", "details"),
         ]
         super().__init__(extra_shortcuts=extra_shortcuts, **kwargs)

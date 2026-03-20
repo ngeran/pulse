@@ -13,7 +13,7 @@ class DashboardFooter(ModularFooter):
     """
     Dashboard footer with global shortcuts.
 
-    Global: [b] dashboard │ [m] device management │ [p] prism │ [h] help │ [q] quit
+    Global: [b] dashboard │ [f] facts │ [m] device management │ [p] prism │ [h] help │ [q] quit
     No extra shortcuts - uses only global shortcuts.
     """
 

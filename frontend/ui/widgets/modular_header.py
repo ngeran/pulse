@@ -76,6 +76,8 @@ class ModularHeader(Horizontal):
         """Update WebSocket and API status from the app."""
         try:
             app = self.app
+            print(f"[DEBUG] _update_global_status: app.ws_connected={getattr(app, 'ws_connected', None)}")
+
             # WebSocket status
             ws_online = hasattr(app, 'ws_connected') and app.ws_connected
             self._ws_status = "ONLINE" if ws_online else "OFFLINE"
@@ -83,13 +85,27 @@ class ModularHeader(Horizontal):
             # API status
             if hasattr(app, 'conn_mgr') and app.conn_mgr:
                 sessions = app.conn_mgr.sessions
-                connected = sum(
-                    1 for session in sessions.values()
-                    if hasattr(session, 'state') and session.state.value == "CONNECTED"
-                )
+                print(f"[DEBUG] conn_mgr.sessions: {list(sessions.keys())}")
+                connected = 0
+                for session in sessions.values():
+                    print(f"[DEBUG] session: {session}, state: {getattr(session, 'state', None)}")
+                    # Check if session is connected
+                    state = getattr(session, 'state', None)
+                    if state is not None:
+                        # Handle both enum and string states
+                        from backend.core.connection_engine import ConnectionState
+                        if state == ConnectionState.CONNECTED or (isinstance(state, str) and state == "CONNECTED"):
+                            connected += 1
+                            print(f"[DEBUG] Device {session.host} is CONNECTED")
+                print(f"[DEBUG] Connected devices: {connected}")
                 self._api_status = "ACTIVE" if connected > 0 else "INACTIVE"
-        except Exception:
-            pass
+            else:
+                print("[DEBUG] No conn_mgr found")
+                self._api_status = "INACTIVE"
+        except Exception as e:
+            print(f"[ERROR] _update_global_status error: {e}")
+            import traceback
+            traceback.print_exc()
 
     def _get_global_status_content(self) -> str:
         """Get the global WS and API status content."""
